@@ -90,7 +90,7 @@ class BalloonZoom:
             # Fallback to original logic
             root_x = self.parent_canvas.winfo_rootx()
             root_y = self.parent_canvas.winfo_rooty()
-            self.zoom_window.geometry(f"+{root_x + int((x*scale)+20)}+{root_y + int((y*scale)-100)}+")
+            self.zoom_window.geometry(f"+{root_x + int((x*scale)+20)}+{root_y + int((y*scale)-100)}")
 
     def hide_zoom_view(self):
         """

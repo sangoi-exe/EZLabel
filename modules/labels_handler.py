@@ -1,3 +1,8 @@
+# ------------------------------------------------------------------------------
+# File: modules/labels_handler.py
+# Description: Handles loading and saving YOLO label files.
+# ------------------------------------------------------------------------------
+
 import os
 from .shapes import PointData
 
@@ -14,7 +19,7 @@ class LabelHandler:
     def save_labels(self, polygons, img_width, img_height):
         """
         Saves each polygon in YOLO segmentation format:
-          class x1 y1 x2 y2 ... xN yN
+            class x1 y1 x2 y2 ... xN yN
         All coords normalized to [0..1].
         """
         if not self.current_image_path:
@@ -28,36 +33,26 @@ class LabelHandler:
         for poly_key, poly in polygons.items():
             pts = poly["points"]
             if len(pts) < 3:
-                # Normally segmentation expects >=3 for a valid polygon,
-                # but some want to store lines with only 2 points. Adjust as needed.
+                # Segmentation normally expects >= 3 points for a valid polygon.
                 continue
 
             cls_id = poly.get("class_id", "0")
-            # Monta lista [x1, y1, x2, y2, ...] normalizada
-            coords_norm = []
-            for p in pts:
-                xn = p.x / img_width
-                yn = p.y / img_height
-                coords_norm.append(f"{xn:.6f}")
-                coords_norm.append(f"{yn:.6f}")
+            # Normalize points to [0..1] range
+            coords_norm = [f"{p.x / img_width:.6f} {p.y / img_height:.6f}" for p in pts]
 
-            # "class" + todos os pares x_i y_i
+            # Write "class" followed by all normalized (x, y) pairs
             line = f"{cls_id} " + " ".join(coords_norm)
             lines.append(line)
 
+        # Write labels to file
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
 
     def load_labels(self, txt_path, workspace_frame):
-        """
-        Loads YOLO segmentation format:
-        class x1 y1 x2 y2 ... xN yN
-        Creates polygons in workspace_frame.
-        """
         if not workspace_frame.image:
             return
 
-        workspace_frame.polygons.clear()
+        workspace_frame.poly_manager.clear_all()
         img_w = workspace_frame.image.width
         img_h = workspace_frame.image.height
 
@@ -67,45 +62,74 @@ class LabelHandler:
                 if not line:
                     continue
                 parts = line.split()
-                if len(parts) < 5:
-                    # Must have at least: class + x1 + y1 + x2 + y2
-                    continue
 
-                cls_id = parts[0]
-                coords = parts[1:]  # x1, y1, x2, y2, ...
-
-                # Precisamos de pares, então len(coords) deve ser múltiplo de 2
-                if len(coords) % 2 != 0:
-                    continue
-
-                # Monta a lista de PointData
-                poly_points = []
-                for i in range(0, len(coords), 2):
+                # YOLO bounding box format: class center_x center_y width height
+                if len(parts) == 5:
                     try:
-                        xn = float(coords[i])
-                        yn = float(coords[i + 1])
+                        cls_id, center_x_norm, center_y_norm, width_norm, height_norm = map(float, parts)
                     except ValueError:
+                        print(f"Skipping invalid line: {line}")
                         continue
-                    # Converte para coordenadas absolutas
-                    x_abs = xn * img_w
-                    y_abs = yn * img_h
-                    poly_points.append(PointData(x_abs, y_abs))
 
-                if len(poly_points) < 2:
-                    continue
+                    # Convert normalized coordinates to absolute
+                    center_x = center_x_norm * img_w
+                    center_y = center_y_norm * img_h
+                    width = width_norm * img_w
+                    height = height_norm * img_h
 
-                # Define uma chave e monta o dicionário do polígono
-                first_x = int(poly_points[0].x)
-                first_y = int(poly_points[0].y)
-                polygon_key = (first_x, first_y)
+                    # Calculate coordinates of the four corners
+                    x1 = center_x - width / 2
+                    y1 = center_y - height / 2
+                    x2 = center_x + width / 2
+                    y2 = center_y - height / 2
+                    x3 = center_x + width / 2
+                    y3 = center_y + height / 2
+                    x4 = center_x - width / 2
+                    y4 = center_y + height / 2
 
-                polygon_dict = {
-                    "points": poly_points,
-                    "color": workspace_frame.line_color,
-                    "class_id": cls_id if cls_id else "0",
-                    "is_closed": True,  # Normalmente polígono fechado
-                }
+                    # Create polygon points
+                    poly_points = [
+                        PointData(x1, y1),
+                        PointData(x2, y2),
+                        PointData(x3, y3),
+                        PointData(x4, y4),
+                    ]
 
-                workspace_frame.polygons[polygon_key] = polygon_dict
+                    # Create polygon and add it to workspace
+                    color = workspace_frame.line_color
+                    polygon_dict = {
+                        "points": poly_points,
+                        "color": color,
+                        "class_id": str(int(cls_id)),
+                        "is_closed": True,
+                    }
+                    workspace_frame.polygons[color] = polygon_dict
 
-        workspace_frame._redraw()
+                # YOLO segmentation format: class x1 y1 x2 y2 ... xN yN
+                elif len(parts) >= 5 and len(parts) % 2 != 1:
+                    try:
+                        cls_id = parts[0]
+                        coords = list(map(float, parts[1:]))
+
+                        poly_points = []
+                        for i in range(0, len(coords), 2):
+                            xn = coords[i]
+                            yn = coords[i + 1]
+                            x_abs = xn * img_w
+                            y_abs = yn * img_h
+                            poly_points.append(PointData(x_abs, y_abs))
+
+                        if len(poly_points) > 2:
+                            # Create polygon and add it to workspace
+                            color = workspace_frame.line_color
+                            polygon_dict = {
+                                "points": poly_points,
+                                "color": color,
+                                "class_id": cls_id,
+                                "is_closed": True,
+                            }
+                            workspace_frame.polygons[color] = polygon_dict
+
+                    except ValueError:
+                        print(f"Skipping invalid line: {line}")
+                        continue

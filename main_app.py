@@ -1,20 +1,17 @@
-# ------------------------------------------------------------------------------
-# File: main_app.py
-# Description: Entry point for the bounding box labeling application.
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------
+# main_app.py (somente partes alteradas)
+# -------------------------------------------------------------------------
 
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
-from PIL import Image, ImageTk
+from tkinter import ttk, messagebox, filedialog, simpledialog
 import os
 
 from modules.workspace import WorkspaceFrame
 from modules.labels_handler import LabelHandler
-from modules.color_palette import ColorPaletteDialog
 
 
 class MainApplication(tk.Tk):
-    """Janela principal com toolbar, combobox de zoom e modo de desenho."""
+    """Main window with toolbar, including color squares for polygon selection."""
 
     def __init__(self):
         super().__init__()
@@ -24,59 +21,79 @@ class MainApplication(tk.Tk):
 
         self.label_handler = LabelHandler()
 
+        self.active_color = "#FF0000"
+
         self._create_toolbar()
 
         self.workspace_frame = WorkspaceFrame(self)
         self.workspace_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.workspace_frame.bind("<<RefreshPolygonList>>", self._on_refresh_polygon_list)
-
     def _create_toolbar(self):
-        """Cria uma toolbar com botões e o combobox de zoom."""
+        """Creates a toolbar with color squares, zoom combobox, etc."""
         toolbar = tk.Frame(self, bd=2, relief=tk.RAISED)
         toolbar.pack(side=tk.TOP, fill=tk.X)
 
-        # Botão 'Open Image'
+        # "Open Image" button
         btn_open_img = tk.Button(toolbar, text="Open Image", command=self.open_image)
         btn_open_img.pack(side=tk.LEFT, padx=5, pady=2)
 
-        # Botão 'Open Label'
+        # "Open Label" button
         btn_open_label = tk.Button(toolbar, text="Open Label File", command=self.open_label_file)
         btn_open_label.pack(side=tk.LEFT, padx=5, pady=2)
 
-        # Modo de desenho (combobox) - sem mudanças exceto que guardamos referência:
+        # Draw mode combobox (unchanged except removed references to polygon selection)
         tk.Label(toolbar, text="Mode:").pack(side=tk.LEFT, padx=5)
         self.mode_combo = ttk.Combobox(toolbar, values=["box", "free"], state="readonly", width=6)
-        self.mode_combo.current(1)  # "box" default
+        self.mode_combo.current(1)  # default "box" or "free"
         self.mode_combo.bind("<<ComboboxSelected>>", self._on_mode_changed)
         self.mode_combo.pack(side=tk.LEFT, padx=2)
 
-        # ComboBox de zoom
+        # Zoom combobox
         tk.Label(toolbar, text="Zoom:").pack(side=tk.LEFT, padx=(10, 2))
-        self.zoom_combo = ttk.Combobox(toolbar, values=["25%", "50%", "75%", "100%", "150%", "200%", "300%"], width=5, state="normal")
+        self.zoom_combo = ttk.Combobox(toolbar, values=["25%", "50%", "75%", "100%", "150%", "200%", "300%"], width=5)
         self.zoom_combo.set("100%")
         self.zoom_combo.bind("<<ComboboxSelected>>", self._on_zoom_combo_changed)
         self.zoom_combo.pack(side=tk.LEFT, padx=2)
 
-        # Botão 'Line Color'
-        btn_color = tk.Button(toolbar, text="Line Color", command=self.choose_line_color)
-        btn_color.pack(side=tk.LEFT, padx=5, pady=2)
-
-        # Botão 'Generate Label'
+        # "Generate Label" button
         btn_generate = tk.Button(toolbar, text="Generate Label", command=self.generate_label_file)
         btn_generate.pack(side=tk.LEFT, padx=5, pady=2)
 
-        # Checkbutton 'continuous' - agora guardamos a referência em self.continuous_check
+        # Checkbutton "continuous" for free mode
         self.continuous_var = tk.BooleanVar(value=True)
         self.continuous_check = tk.Checkbutton(toolbar, text="Continuous", variable=self.continuous_var, command=self._on_continuous_switch)
         self.continuous_check.pack(side=tk.LEFT, padx=5, pady=2)
-        self.continuous_check.config(state="active")  # inicia desabilitado se modo='box'
+        self.continuous_check.config(state="active")
 
-        # NOVO: Combobox para escolher polígono
-        tk.Label(toolbar, text="Polygon:").pack(side=tk.LEFT, padx=(10, 2))
-        self.poly_combo = ttk.Combobox(toolbar, values=[], state="readonly", width=15)
-        self.poly_combo.bind("<<ComboboxSelected>>", self._on_poly_selected)
-        self.poly_combo.pack(side=tk.LEFT, padx=2)
+        # NOVO: Quadrados de cor para associar a cada polígono
+        color_list = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#000000", "#FFFFFF"]
+        self.color_buttons = {}
+        for c in color_list:
+            btn = tk.Button(toolbar, bg=c, width=2, command=lambda col=c: self._on_color_button_click(col))  # pequeno quadrado
+            btn.pack(side=tk.LEFT, padx=2)
+
+            # Armazena referência para podermos mudar o 'relief'
+            self.color_buttons[c] = btn
+
+        # Ajusta o relief da cor inicial
+        self._update_color_button_relief()
+
+    def _on_color_button_click(self, color):
+        """
+        Sets the active color, updates the button relief, and informs the workspace.
+        """
+        self.active_color = color
+        self._update_color_button_relief()
+        # Diz ao workspace para usar essa cor para o polígono a ser editado/criado
+        self.workspace_frame.set_line_color(color)
+
+    def _update_color_button_relief(self):
+        """Updates relief so that only the active color button looks 'pressed'."""
+        for c, btn in self.color_buttons.items():
+            if c == self.active_color:
+                btn.config(relief=tk.SUNKEN)
+            else:
+                btn.config(relief=tk.RAISED)
 
     def _on_continuous_switch(self):
         """Envia True/False para o workspace para ativar/desativar continuous no free mode."""
@@ -105,44 +122,6 @@ class MainApplication(tk.Tk):
             self.workspace_frame.set_manual_zoom(val / 100.0)
         except ValueError:
             pass  # ignora se o usuário digitou algo inválido
-
-    def _on_refresh_polygon_list(self, event=None):
-        """
-        Atualiza a combobox de polígonos com base no dicionário self.workspace_frame.polygons.
-        """
-        polygon_keys = []
-        for k in self.workspace_frame.polygons:
-            # k normalmente é (int_x, int_y). Transformamos em string para exibir na combobox.
-            polygon_keys.append(str(k))
-        self.poly_combo["values"] = polygon_keys
-
-        # Se não houver polígonos, limpamos
-        if not polygon_keys:
-            self.poly_combo.set("")
-        else:
-            # Seleciona o primeiro como padrão (ou nenhum)
-            self.poly_combo.set("")
-
-    def _on_poly_selected(self, event):
-        """
-        Quando o usuário seleciona um polígono na combobox, enviamos essa informação
-        para o workspace para que ele fique 'ativo' para edição.
-        """
-        selection = self.poly_combo.get()
-        if not selection:
-            self.workspace_frame.set_selected_polygon(None)
-            return
-
-        # Transformar string "(x, y)" de volta em tupla (x, y)
-        # Caso falhe, setamos None
-        try:
-            poly_key = eval(selection)  # ex: "(10, 20)" -> (10, 20)
-            if isinstance(poly_key, tuple) and len(poly_key) == 2:
-                self.workspace_frame.set_selected_polygon(poly_key)
-            else:
-                self.workspace_frame.set_selected_polygon(None)
-        except:
-            self.workspace_frame.set_selected_polygon(None)
 
     def update_zoom_in_combo(self, zoom_val):
         """
@@ -231,13 +210,6 @@ class MainApplication(tk.Tk):
 
         btn_ok = tk.Button(dialog_zoom, text="OK", command=apply_zoom)
         btn_ok.pack(pady=5)
-
-    def choose_line_color(self):
-        """
-        Opens a color palette dialog for choosing the line color.
-        """
-        cp = ColorPaletteDialog(self)
-        self.workspace_frame.set_line_color(cp.result_color)
 
 
 def main():
