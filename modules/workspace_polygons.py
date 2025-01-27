@@ -12,7 +12,6 @@ class WorkspacePolygons:
 
     def __init__(self, workspace):
         self.workspace = workspace
-        # Agora cada polígono é mapeado pela COR em vez de key. Ex: {"#FF0000": {...}, "#00FF00": {...}}
         self.polygons = {}
         self.current_free_polygon = None
         self.temp_free_point = None
@@ -29,7 +28,6 @@ class WorkspacePolygons:
         If it doesn't exist yet, starts a new polygon.
         """
         if color not in self.polygons:
-            # Create a new polygon for that color
             p = PointData(cx, cy)
             self.polygons[color] = {
                 "points": [p],
@@ -40,34 +38,44 @@ class WorkspacePolygons:
             self.current_free_polygon = self.polygons[color]
         else:
             poly = self.polygons[color]
-            # Se já estiver fechado, não vamos adicionar (depende da lógica que desejar).
-            # Mas assumindo que se "is_closed" está False, continuamos a desenhar.
             if not poly["is_closed"]:
                 first_pt = poly["points"][0]
                 dist = math.dist((first_pt.x, first_pt.y), (cx, cy))
                 if dist < 10:
-                    # Fecha polígono
                     if poly["points"][-1] != first_pt:
                         poly["points"].append(first_pt)
                     poly["is_closed"] = True
-                    class_id = simpledialog.askstring("Class ID", "Enter class number:")
+                    class_id = self.workspace.prompt_class_selection()
                     poly["class_id"] = class_id if class_id else "0"
                 else:
                     poly["points"].append(PointData(cx, cy))
 
     def create_box_polygon(self, p1, p2, color):
         """
-        Creates a 2-point polygon in 'box' mode for the specified color.
-        If a polygon with that color already exists and is open, it might
-        be overwritten or extended, but aqui assumimos que criamos do zero.
+        Creates a rectangular polygon from two diagonal points.
         """
+        x1, y1 = p1.x, p1.y
+        x2, y2 = p2.x, p2.y
+
+        # Ordena os pontos para obter os cantos corretos
+        min_x, max_x = sorted([x1, x2])
+        min_y, max_y = sorted([y1, y2])
+
+        # Define os quatro pontos do retângulo
+        rect_points = [
+            PointData(min_x, min_y),
+            PointData(max_x, min_y),
+            PointData(max_x, max_y),
+            PointData(min_x, max_y),
+        ]
+
         self.polygons[color] = {
-            "points": [p1, p2],
+            "points": rect_points,
             "color": color,
             "class_id": "",
-            "is_closed": False,
+            "is_closed": True,
         }
-        class_id = simpledialog.askstring("Class ID", "Enter class number:")
+        class_id = self.workspace.prompt_class_selection()
         self.polygons[color]["class_id"] = class_id if class_id else "0"
 
     def delete_point(self, color, point_idx):

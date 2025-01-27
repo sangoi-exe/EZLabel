@@ -1,9 +1,9 @@
 # -------------------------------------------------------------------------
-# main_app.py (somente partes alteradas)
+# main_app.py
 # -------------------------------------------------------------------------
 
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog, simpledialog
+from tkinter import ttk, messagebox, filedialog
 import os
 
 from modules.workspace import WorkspaceFrame
@@ -19,13 +19,29 @@ class MainApplication(tk.Tk):
         self.geometry("1200x800+50+50")
         self.attributes("-topmost", False)
 
+        self.class_definitions = {
+            "0": "CNH_Aberta",
+            "1": "CNH_Frente",
+            "3": "CNH_Verso",
+            "4": "RG_Aberta",
+            "5": "RG_Frente",
+            "6": "RG_Verso",
+            "7": "CPF_Frente",
+            "8": "CPF_Verso",
+            "9": "Doc_Foto",
+            "0": "Fatura_Luz",
+            "1": "Fatura_Agua",
+            "2": "Fatura_Telefone",
+            "3": "Cabeçalho",
+        }
+
         self.label_handler = LabelHandler()
 
         self.active_color = "#FF0000"
 
         self._create_toolbar()
 
-        self.workspace_frame = WorkspaceFrame(self)
+        self.workspace_frame = WorkspaceFrame(self, self.class_definitions)
         self.workspace_frame.pack(fill=tk.BOTH, expand=True)
 
     def _create_toolbar(self):
@@ -38,38 +54,71 @@ class MainApplication(tk.Tk):
         btn_open_img.pack(side=tk.LEFT, padx=5, pady=2)
 
         # "Open Label" button
-        btn_open_label = tk.Button(toolbar, text="Open Label File", command=self.open_label_file)
+        btn_open_label = tk.Button(
+            toolbar, text="Open Label File", command=self.open_label_file
+        )
         btn_open_label.pack(side=tk.LEFT, padx=5, pady=2)
 
         # Draw mode combobox (unchanged except removed references to polygon selection)
         tk.Label(toolbar, text="Mode:").pack(side=tk.LEFT, padx=5)
-        self.mode_combo = ttk.Combobox(toolbar, values=["box", "free"], state="readonly", width=6)
+        self.mode_combo = ttk.Combobox(
+            toolbar, values=["box", "free"], state="readonly", width=6
+        )
         self.mode_combo.current(1)  # default "box" or "free"
         self.mode_combo.bind("<<ComboboxSelected>>", self._on_mode_changed)
         self.mode_combo.pack(side=tk.LEFT, padx=2)
 
         # Zoom combobox
         tk.Label(toolbar, text="Zoom:").pack(side=tk.LEFT, padx=(10, 2))
-        self.zoom_combo = ttk.Combobox(toolbar, values=["25%", "50%", "75%", "100%", "150%", "200%", "300%"], width=5)
+        self.zoom_combo = ttk.Combobox(
+            toolbar,
+            values=["25%", "50%", "75%", "100%", "150%", "200%", "300%"],
+            width=5,
+        )
         self.zoom_combo.set("100%")
         self.zoom_combo.bind("<<ComboboxSelected>>", self._on_zoom_combo_changed)
         self.zoom_combo.pack(side=tk.LEFT, padx=2)
 
+        # Botão 'Zoom Fit'
+        btn_zoom_fit = tk.Button(toolbar, text="Fit", command=self.zoom_fit)
+        btn_zoom_fit.pack(side=tk.LEFT, padx=2)
+
         # "Generate Label" button
-        btn_generate = tk.Button(toolbar, text="Generate Label", command=self.generate_label_file)
+        btn_generate = tk.Button(
+            toolbar, text="Generate Label", command=self.generate_label_file
+        )
         btn_generate.pack(side=tk.LEFT, padx=5, pady=2)
 
         # Checkbutton "continuous" for free mode
         self.continuous_var = tk.BooleanVar(value=True)
-        self.continuous_check = tk.Checkbutton(toolbar, text="Continuous", variable=self.continuous_var, command=self._on_continuous_switch)
+        self.continuous_check = tk.Checkbutton(
+            toolbar,
+            text="Continuous",
+            variable=self.continuous_var,
+            command=self._on_continuous_switch,
+        )
         self.continuous_check.pack(side=tk.LEFT, padx=5, pady=2)
         self.continuous_check.config(state="active")
 
         # NOVO: Quadrados de cor para associar a cada polígono
-        color_list = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF", "#000000", "#FFFFFF"]
+        color_list = [
+            "#FF0000",
+            "#00FF00",
+            "#0000FF",
+            "#FFFF00",
+            "#FF00FF",
+            "#00FFFF",
+            "#000000",
+            "#FFFFFF",
+        ]
         self.color_buttons = {}
         for c in color_list:
-            btn = tk.Button(toolbar, bg=c, width=2, command=lambda col=c: self._on_color_button_click(col))  # pequeno quadrado
+            btn = tk.Button(
+                toolbar,
+                bg=c,
+                width=2,
+                command=lambda col=c: self._on_color_button_click(col),
+            )  # pequeno quadrado
             btn.pack(side=tk.LEFT, padx=2)
 
             # Armazena referência para podermos mudar o 'relief'
@@ -77,6 +126,10 @@ class MainApplication(tk.Tk):
 
         # Ajusta o relief da cor inicial
         self._update_color_button_relief()
+
+    def zoom_fit(self):
+        """Zooms to fit the image in the workspace."""
+        self.workspace_frame.zoom_to_fit()
 
     def _on_color_button_click(self, color):
         """
@@ -141,7 +194,9 @@ class MainApplication(tk.Tk):
         file_dialog.attributes("-topmost", True)
         file_dialog.withdraw()
         image_path = filedialog.askopenfilename(
-            parent=file_dialog, title="Select an image", filetypes=[("Image files", "*.jpg *.jpeg *.png *.bmp *.gif")]
+            parent=file_dialog,
+            title="Select an image",
+            filetypes=[("Image files", "*.jpg *.jpeg *.png *.bmp *.gif")],
         )
         file_dialog.destroy()
 
@@ -160,7 +215,11 @@ class MainApplication(tk.Tk):
         file_dialog = tk.Toplevel(self)
         file_dialog.attributes("-topmost", True)
         file_dialog.withdraw()
-        txt_path = filedialog.askopenfilename(parent=file_dialog, title="Select a YOLO label file", filetypes=[("Text Files", "*.txt")])
+        txt_path = filedialog.askopenfilename(
+            parent=file_dialog,
+            title="Select a YOLO label file",
+            filetypes=[("Text Files", "*.txt")],
+        )
         file_dialog.destroy()
 
         if txt_path:
@@ -181,7 +240,13 @@ class MainApplication(tk.Tk):
             messagebox.showwarning("Warning", "No polygons drawn to generate labels.")
             return
 
-        self.label_handler.save_labels(self.workspace_frame.polygons, self.workspace_frame.image.width, self.workspace_frame.image.height)
+        self.label_handler.save_labels(
+            self.workspace_frame.polygons,
+            self.workspace_frame.image.width,
+            self.workspace_frame.image.height,
+        )
+
+        print("Label salva.")
 
     def set_zoom_percentage(self):
         """

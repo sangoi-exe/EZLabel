@@ -4,15 +4,16 @@
 #              managers (events, polygons, drawing).
 # ------------------------------------------------------------------------------
 
+import math
 import tkinter as tk
 from PIL import Image
-import math
 
-from .balloon_zoom import BalloonZoom
 from .shapes import PointData
+from .balloon_zoom import BalloonZoom
+from .workspace_draw import WorkspaceDrawer
 from .workspace_events import WorkspaceEvents
 from .workspace_polygons import WorkspacePolygons
-from .workspace_draw import WorkspaceDrawer
+from .class_selection import ClassSelectionDialog
 
 
 class WorkspaceFrame(tk.Frame):
@@ -21,11 +22,12 @@ class WorkspaceFrame(tk.Frame):
     polygon, and drawing managers.
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent, class_definitions):
         super().__init__(parent)
 
         self.parent = parent
         self.image = None
+        self.class_definitions = class_definitions
         self.canvas = tk.Canvas(self, cursor="cross")
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
@@ -52,6 +54,44 @@ class WorkspaceFrame(tk.Frame):
         self.drawer = WorkspaceDrawer(self)
         self.events = WorkspaceEvents(self)
         self.events.bind_all()
+
+    def set_manual_zoom(self, zoom_factor):
+        """Sets the zoom to the given factor and re-centers the image."""
+        self.scale = zoom_factor
+        self._center_image()
+        self.drawer.draw_all()
+
+    def zoom_to_fit(self):
+        """Adjusts the zoom and offset to fit the image to the canvas."""
+        if not self.image:
+            return
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+
+        scale_x = canvas_width / self.base_width
+        scale_y = canvas_height / self.base_height
+        self.scale = min(scale_x, scale_y)
+
+        self.offset_x = (canvas_width - self.base_width * self.scale) / 2
+        self.offset_y = (canvas_height - self.base_height * self.scale) / 2
+
+        self.drawer.draw_all()
+
+    def _center_image(self):
+        """Centers the image in the canvas."""
+        c_width = self.canvas.winfo_width()
+        c_height = self.canvas.winfo_height()
+        img_width = self.base_width * self.scale
+        img_height = self.base_height * self.scale
+        self.offset_x = (c_width - img_width) / 2
+        self.offset_y = (c_height - img_height) / 2
+
+    def prompt_class_selection(self):
+        """Opens the class selection dialog and returns selected class ID."""
+
+        dialog = ClassSelectionDialog(self.parent, self.class_definitions)
+        class_id = dialog.show()
+        return class_id
 
     def load_image(self, path):
         """Loads image, resets zoom/pan, clears polygons, and redraws."""
@@ -112,7 +152,7 @@ class WorkspaceFrame(tk.Frame):
         cy = y * self.scale + self.offset_y
         return cx, cy
 
-    def _find_point_near(self, x, y, radius=10):
+    def _find_point_near(self, x, y, radius=20):
         """
         Returns (closest_point, polygon_key, index_in_polygon)
         if found within 'radius' distance on canvas.
@@ -131,9 +171,13 @@ class WorkspaceFrame(tk.Frame):
                     nearest_poly_key = key
                     nearest_pt_idx = i
 
-        return (nearest_point, nearest_poly_key, nearest_pt_idx) if nearest_point else (None, None, None)
+        return (
+            (nearest_point, nearest_poly_key, nearest_pt_idx)
+            if nearest_point
+            else (None, None, None)
+        )
 
-    def _check_near_point(self, x, y, radius=10):
+    def _check_near_point(self, x, y, radius=20):
         """
         Returns the nearest point if inside 'radius', or None.
         """
@@ -151,12 +195,18 @@ class WorkspaceFrame(tk.Frame):
         for key, poly in self.poly_manager.polygons.items():
             pts = poly["points"]
             num_points = len(pts)
-            if num_points < 2:  # Polígono precisa de pelo menos 2 pontos para ter segmentos
+            if (
+                num_points < 2
+            ):  # Polígono precisa de pelo menos 2 pontos para ter segmentos
                 continue
             for i in range(num_points):  # Itera por todos os pontos
                 p1 = pts[i]
-                p2 = pts[(i + 1) % num_points]  # Próximo ponto, usando módulo para fechar o loop
-                dist_info = self._point_to_segment_distance(x, y, p1.x, p1.y, p2.x, p2.y)
+                p2 = pts[
+                    (i + 1) % num_points
+                ]  # Próximo ponto, usando módulo para fechar o loop
+                dist_info = self._point_to_segment_distance(
+                    x, y, p1.x, p1.y, p2.x, p2.y
+                )
                 dist, x_proj, y_proj, _ = dist_info
 
                 # Converte projeção para canvas coords para comparar com radius
@@ -166,7 +216,12 @@ class WorkspaceFrame(tk.Frame):
 
                 if canvas_dist < best_dist and canvas_dist <= radius:
                     best_dist = canvas_dist
-                    best_result = (key, i, x_proj, y_proj)  # 'i' é o índice do ponto inicial do segmento
+                    best_result = (
+                        key,
+                        i,
+                        x_proj,
+                        y_proj,
+                    )  # 'i' é o índice do ponto inicial do segmento
         return best_result
 
     def _point_to_segment_distance(self, px, py, x1, y1, x2, y2):

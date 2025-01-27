@@ -15,6 +15,18 @@ class LabelHandler:
 
     def __init__(self):
         self.current_image_path = None
+        self.color_list = [
+            "#FF0000",
+            "#00FF00",
+            "#0000FF",
+            "#FFFF00",
+            "#FF00FF",
+            "#00FFFF",
+            "#000000",
+            "#FFFFFF",
+        ]
+        self.color_index = 0
+        self.polygon_counter = 0
 
     def save_labels(self, polygons, img_width, img_height):
         """
@@ -49,12 +61,19 @@ class LabelHandler:
             f.write("\n".join(lines))
 
     def load_labels(self, txt_path, workspace_frame):
+        """
+        Loads labels from a YOLO format file and creates polygons in the workspace.
+        Assigns a color from the color palette to each polygon.
+        """
         if not workspace_frame.image:
             return
 
         workspace_frame.poly_manager.clear_all()
         img_w = workspace_frame.image.width
         img_h = workspace_frame.image.height
+
+        self.color_index = 0
+        self.polygon_counter = 0
 
         with open(txt_path, "r", encoding="utf-8") as f:
             for line in f:
@@ -63,31 +82,32 @@ class LabelHandler:
                     continue
                 parts = line.split()
 
-                # YOLO bounding box format: class center_x center_y width height
                 if len(parts) == 5:
                     try:
-                        cls_id, center_x_norm, center_y_norm, width_norm, height_norm = map(float, parts)
+                        (
+                            cls_id,
+                            center_x_norm,
+                            center_y_norm,
+                            width_norm,
+                            height_norm,
+                        ) = map(float, parts)
                     except ValueError:
-                        print(f"Skipping invalid line: {line}")
                         continue
 
-                    # Convert normalized coordinates to absolute
                     center_x = center_x_norm * img_w
                     center_y = center_y_norm * img_h
                     width = width_norm * img_w
                     height = height_norm * img_h
 
-                    # Calculate coordinates of the four corners
                     x1 = center_x - width / 2
                     y1 = center_y - height / 2
                     x2 = center_x + width / 2
-                    y2 = center_y - height / 2
-                    x3 = center_x + width / 2
+                    y2 = y1
+                    x3 = x2
                     y3 = center_y + height / 2
-                    x4 = center_x - width / 2
-                    y4 = center_y + height / 2
+                    x4 = x1
+                    y4 = y3
 
-                    # Create polygon points
                     poly_points = [
                         PointData(x1, y1),
                         PointData(x2, y2),
@@ -95,18 +115,21 @@ class LabelHandler:
                         PointData(x4, y4),
                     ]
 
-                    # Create polygon and add it to workspace
-                    color = workspace_frame.line_color
+                    color = self.color_list[self.color_index % len(self.color_list)]
+                    self.color_index += 1
+
                     polygon_dict = {
                         "points": poly_points,
                         "color": color,
                         "class_id": str(int(cls_id)),
                         "is_closed": True,
                     }
-                    workspace_frame.polygons[color] = polygon_dict
 
-                # YOLO segmentation format: class x1 y1 x2 y2 ... xN yN
-                elif len(parts) >= 5 and len(parts) % 2 != 1:
+                    self.polygon_counter += 1
+                    poly_key = f"poly_{self.polygon_counter}"
+                    workspace_frame.poly_manager.polygons[poly_key] = polygon_dict
+
+                elif len(parts) >= 5 and len(parts) % 2 == 1:
                     try:
                         cls_id = parts[0]
                         coords = list(map(float, parts[1:]))
@@ -119,17 +142,26 @@ class LabelHandler:
                             y_abs = yn * img_h
                             poly_points.append(PointData(x_abs, y_abs))
 
-                        if len(poly_points) > 2:
-                            # Create polygon and add it to workspace
-                            color = workspace_frame.line_color
+                        if len(poly_points) >= 3:
+                            color = self.color_list[
+                                self.color_index % len(self.color_list)
+                            ]
+                            self.color_index += 1
+
                             polygon_dict = {
                                 "points": poly_points,
                                 "color": color,
                                 "class_id": cls_id,
                                 "is_closed": True,
                             }
-                            workspace_frame.polygons[color] = polygon_dict
+
+                            self.polygon_counter += 1
+                            poly_key = f"poly_{self.polygon_counter}"
+                            workspace_frame.poly_manager.polygons[poly_key] = (
+                                polygon_dict
+                            )
 
                     except ValueError:
-                        print(f"Skipping invalid line: {line}")
                         continue
+
+        workspace_frame.drawer.draw_all()

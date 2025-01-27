@@ -79,11 +79,11 @@ class WorkspaceEvents:
 
         # Logic for "box" mode: handle two-click bounding box creation
         if ws.draw_mode == "box":
-            self._handle_box_click(cx, cy)
+            self._handle_box_click(cx, cy, color)
 
         ws.drawer.draw_all()
 
-    def _handle_box_click(self, cx, cy):
+    def _handle_box_click(self, cx, cy, color):
         """Box mode: two clicks = two points => bounding box polygon."""
         ws = self.workspace
         pm = ws.poly_manager
@@ -101,7 +101,7 @@ class WorkspaceEvents:
         else:
             p1 = ws.temp_point
             p2 = ws.PointDataClass(cx, cy)
-            pm.create_box_polygon(p1, p2)
+            pm.create_box_polygon(p1, p2, color)
             ws.is_drawing_segment = False
             ws.temp_point = None
 
@@ -182,7 +182,9 @@ class WorkspaceEvents:
         found_point, polygon_key, pt_idx = ws._find_point_near(cx, cy)
 
         if found_point:
-            ans = messagebox.askyesno("Delete Point", "Do you want to delete this point?")
+            ans = messagebox.askyesno(
+                "Delete Point", "Do you want to delete this point?"
+            )
             if ans:
                 pm.delete_point(polygon_key, pt_idx)
                 ws.drawer.draw_all()
@@ -233,12 +235,12 @@ class WorkspaceEvents:
         dist_to_first = math.dist((first_pt.x, first_pt.y), (cx, cy))
 
         # 1) Se polígono está aberto e double-click é perto do primeiro ponto => fechar polígono
-        if not poly["is_closed"] and dist_to_first < 10 and len(points) >= 2:
+        if not poly["is_closed"] and dist_to_first < 20 and len(points) >= 2:
             # Fecha polígono unindo último ao primeiro
             if points[-1] != first_pt:
                 points.append(first_pt)
             poly["is_closed"] = True
-            class_id = simpledialog.askstring("Class ID", "Enter class number:")
+            class_id = ws.prompt_class_selection()
             poly["class_id"] = class_id if class_id else "0"
             ws.drawer.draw_all()
             return
