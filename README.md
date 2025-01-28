@@ -48,11 +48,9 @@ This tool is ideal for preparing datasets for training YOLO models and similar o
 1.  **Clone the repository:**
 
     ```bash
-    git clone [repository URL]
-    cd [repository-directory]
+    git clone [[repository URL]](https://github.com/sangoi-exe/EZLabel.git)
+    cd EZLabel
     ```
-
-    Replace `[repository URL]` with the actual URL of your project repository and `[repository-directory]` with the name of the directory created after cloning.
 
 2.  **Create a virtual environment (recommended):**
 
