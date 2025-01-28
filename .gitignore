@@ -13,7 +13,7 @@ data.yaml
 # Distribution / packaging
 .Python
 build/
-contas/
+dataset/
 develop-eggs/
 dist/
 downloads/

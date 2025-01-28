@@ -24,7 +24,7 @@ class WorkspaceFrame(tk.Frame):
 
     def __init__(self, parent, class_definitions):
         super().__init__(parent)
-
+        self.app = parent
         self.parent = parent
         self.image = None
         self.class_definitions = class_definitions
@@ -152,7 +152,7 @@ class WorkspaceFrame(tk.Frame):
         cy = y * self.scale + self.offset_y
         return cx, cy
 
-    def _find_point_near(self, x, y, radius=20):
+    def _find_point_near(self, x, y, radius=10):
         """
         Returns (closest_point, polygon_key, index_in_polygon)
         if found within 'radius' distance on canvas.
@@ -177,14 +177,14 @@ class WorkspaceFrame(tk.Frame):
             else (None, None, None)
         )
 
-    def _check_near_point(self, x, y, radius=20):
+    def _check_near_point(self, x, y, radius=10):
         """
         Returns the nearest point if inside 'radius', or None.
         """
         found_point, _, _ = self._find_point_near(x, y, radius)
         return found_point
 
-    def _find_segment_near(self, x, y, radius=20):
+    def _find_segment_near(self, x, y, radius=10):
         """
         Searches all polygons for a line segment near (x, y).
         Returns (polygon_key, segment_index, x_proj, y_proj) if found.
