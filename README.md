@@ -1,8 +1,8 @@
 # YOLO Bounding Box Labeling Application
 
-[![Project Status](https://img.shields.io/badge/Status-Active-brightgreen.svg)](https://github.com/yourusername/yourrepository)
+[![Project Status](https://img.shields.io/badge/Status-Active-brightgreen.svg)](https://github.com/sangoi-exe/EZLabel)
 [![Python Version](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](LICENSE) <!-- Replace with your actual license badge if applicable -->
+[![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](LICENSE)
 
 ## Overview
 
@@ -48,7 +48,7 @@ This tool is ideal for preparing datasets for training YOLO models and similar o
 1.  **Clone the repository:**
 
     ```bash
-    git clone [[repository URL]](https://github.com/sangoi-exe/EZLabel.git)
+    git clone https://github.com/sangoi-exe/EZLabel.git
     cd EZLabel
     ```
 
