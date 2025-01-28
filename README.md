@@ -1,150 +1,123 @@
-# YOLO Bounding Box Labeling Application
-
-[![Project Status](https://img.shields.io/badge/Status-Active-brightgreen.svg)](https://github.com/sangoi-exe/EZLabel)
-[![Python Version](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](LICENSE)
+# EZLabel: Your Efficient YOLO Labeling Tool
 
 ## Overview
 
-This application is a user-friendly Python-based tool designed for labeling images with bounding boxes and polygons in the YOLO (You Only Look Once) format. It provides an intuitive graphical interface built with Tkinter, making image annotation efficient and accessible for computer vision and machine learning projects, particularly for object detection tasks.
+EZLabel is a user-friendly Python application designed to streamline the process of labeling images for YOLO (You Only Look Once) object detection models. Built with Tkinter, EZLabel provides an intuitive graphical interface for drawing bounding boxes and free-form polygons, making image annotation efficient and accurate. Whether you're working on object detection, image segmentation, or any vision task requiring labeled datasets, EZLabel offers a robust solution to prepare your data in the widely adopted YOLO format.
 
-This tool is ideal for preparing datasets for training YOLO models and similar object detection architectures. It emphasizes ease of use, robust functionality, and adherence to Python best practices.
+## ✨ Key Features
 
-## Key Features
+- **Intuitive Graphical Interface:**  Leverages Tkinter to offer a clean and responsive user experience for image annotation.
+- **Bounding Box & Free Polygon Support:** Draw both rectangular bounding boxes for standard object detection and free-form polygons for more precise segmentation tasks.
+- **YOLO Label Format Generation:** Automatically generates label files in the YOLO format (`.txt` files), ready for training your models.
+- **Class Definition Customization:** Easily define and manage your object classes directly within the application.
+- **Color-Coded Labels:** Assign distinct colors to different object classes for visual clarity during annotation.
+- **Zoom & Pan Functionality:** Zoom into images for detailed annotation and pan to navigate large images efficiently.
+- **Zoom Fit & Manual Zoom:** Quickly fit the image to the workspace or set a custom zoom level.
+- **Continuous Free Mode:** For rapid polygon drawing, enabling continuous point placement in free-form mode.
+- **Zoom Balloon for Precision:** A magnified view pops up when dragging points, ensuring pixel-perfect adjustments.
+- **File Navigation & Management:** Open individual images or entire folders, with a file list for easy browsing and selection.
+- **Keyboard Navigation:** Use up and down arrow keys to quickly switch between images in a folder.
+- **Tooltip Hints:** Helpful tooltips guide users through the application's functionalities.
+- **Label Loading & Saving:** Load existing YOLO label files to continue or edit annotations, and save new labels seamlessly.
+- **Customizable Zoom Levels:** Choose from predefined zoom percentages or set a specific zoom value.
 
-- **Image Loading:** Supports loading various image formats (JPEG, PNG, BMP, GIF) for annotation.
-- **Bounding Box and Freehand Polygon Drawing:**
-  - **Box Mode:** Quickly draw rectangular bounding boxes by defining two corner points.
-  - **Free Mode (Polygon):** Create complex polygon shapes for precise object segmentation.
-  - Continuous and non-continuous drawing options in Free Mode.
-- **Zoom & Pan Functionality:**
-  - Mouse wheel zoom with focus point under the cursor for detailed annotation.
-  - Manual zoom percentage input via combobox and direct value setting.
-  - Right-click and drag panning for easy navigation in zoomed images.
-- **Polygon Editing:**
-  - **Selection:** Easily select polygons for modification via a dropdown list.
-  - **Point Dragging:** Modify polygon shapes by dragging individual points.
-  - **Point Insertion:** Double-click near a polygon segment to insert a new point on that segment, refining polygon boundaries.
-  - **Segment Snap:** "Magnetic snap" feature for closed polygons. When the cursor approaches a segment, it snaps to the line, allowing for precise point addition directly on the segment with a single click.
-  - **Point Deletion:** Right-click on a point and choose to delete it.
-- **YOLO Label Format Support:** Generates and loads labels in the YOLO segmentation format (`class x1 y1 x2 y2 ... xN yN`), with normalized coordinates.
-- **Label File Management:**
-  - **Open Label Files:** Load existing YOLO label files to continue or modify annotations.
-  - **Generate Label Files:** Save annotations to `.txt` files in the YOLO format, ready for model training.
-- **Customizable Line Color:** Choose different line colors for bounding boxes/polygons via a color palette dialog.
-- **Class ID Assignment:** Prompt for class IDs for each bounding box or polygon created, ensuring accurate labeling.
-- **User-Friendly Interface:** Clean and intuitive Tkinter GUI, designed for efficient annotation workflows.
-- **Zoom Balloon (Magnifier):** A small zoomed-in window appears when dragging points, providing pixel-level precision for fine adjustments.
-
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- **Python 3.7 or later:** Make sure you have Python installed on your system. You can download it from [python.org](https://www.python.org/).
-- **pip:** Python package installer (usually included with Python installations).
-
-### Installation
-
-1.  **Clone the repository:**
-
-    ```bash
-    git clone https://github.com/sangoi-exe/EZLabel.git
-    cd EZLabel
-    ```
-
-2.  **Create a virtual environment (recommended):**
-
-    ```bash
-    python -m venv ezlabel-venv  # Or your preferred environment name
-    ```
-
-    Activate the virtual environment:
-
-    - **On Windows:**
-      ```bash
-      ezlabel-venv\Scripts\activate
-      ```
-    - **On macOS and Linux:**
-      ```bash
-      source ezlabel-venv/bin/activate
-      ```
-
-3.  **Install dependencies:**
-
-    ```bash
-    pip install pillow tkinter
-    ```
-
-    This command installs the necessary Python libraries:
-
-    - **Pillow (PIL):** For image processing.
-    - **tkinter:** Python's standard GUI toolkit (usually included with Python, but ensure it's available).
-
-    _(Optional)_: For more robust dependency management, consider creating a `requirements.txt` file in your project directory with the following content:
-
-    ```txt
-    Pillow
-    ```
-
-    Then install using:
-
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-### Running the Application
-
-To start the YOLO Bounding Box Labeling Application, execute the main script from your terminal within the project directory:
+Before you begin, ensure you have Python installed on your system. EZLabel is built using standard Python libraries, so no extensive external dependencies are required. However, it's recommended to have `Pillow` (PIL Fork) installed for image handling. You can install it using pip:
 
 ```bash
-python main_app.py
+pip install Pillow
 ```
 
-This will launch the application window, and you can start annotating your images.
+### Installation & Running
 
-## Usage
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/sangoi-exe/EZLabel.git
+   cd EZLabel
+   ```
 
-1.  **Open Image:** Click the "Open Image" button in the toolbar to select and load an image file.
-2.  **Select Drawing Mode:** Choose between "box" (bounding box) and "free" (freehand polygon) modes using the "Mode" dropdown in the toolbar.
-3.  **Zoom & Pan:**
-    - Use the mouse wheel to zoom in and out. The zoom will be centered around the mouse cursor.
-    - Adjust the zoom level directly using the "Zoom" combobox.
-    - Right-click and drag to pan the image when zoomed in.
-4.  **Drawing Annotations:**
-    - **Box Mode:** Click and drag to define a rectangular bounding box. Release the mouse button to complete the box and you will be prompted to enter a class ID.
-    - **Free Mode:**
-      - Click to add points to create a polygon.
-      - To close a polygon, click near the starting point. You will be prompted for a class ID once the polygon is closed.
-      - Enable "Continuous" mode in the toolbar for continuous polygon drawing. Disable for point-by-point polygon creation.
-5.  **Polygon Editing:**
-    - **Select Polygon:** Choose a polygon to edit from the "Polygon" dropdown list in the toolbar.
-    - **Drag Points:** Click and drag existing points of the selected polygon to reshape it.
-    - **Insert Points on Segments:** Double-click near a segment of a **closed** polygon to insert a new point on that segment.
-    - **Segment Snap:** For closed polygons, when your cursor is close to a segment, it will "snap" to the line. A single left-click in this state will add a point directly on the segment.
-    - **Delete Points:** Right-click on a point and confirm to delete it.
-6.  **Line Color:** Change the annotation line color by clicking the "Line Color" button and selecting a color from the palette.
-7.  **Save Labels:** Click "Generate Label" to save the annotations for the currently loaded image in a YOLO format `.txt` file (with the same base name as the image).
-8.  **Load Labels:** Click "Open Label File" to load existing YOLO label files and display the annotations on the image.
+2. **Run the application:**
+   ```bash
+   python main_app.py
+   ```
 
-## Contributing
+   This command will launch the EZLabel application.
 
-Contributions to improve this application are welcome! If you have suggestions, bug reports, or would like to contribute code, please:
+## ✍️ Usage Guide
 
-1.  **Fork the repository.**
-2.  **Create a branch** for your feature or bug fix.
-3.  **Make your changes** and commit them with clear and descriptive commit messages.
-4.  **Submit a pull request** to the main repository.
+1. **Open Image or Folder:**
+   - Click "Open Image" to load a single image for labeling.
+   - Click "Open Folder" to load a directory containing images. The file list on the right side will populate with image files from the selected folder.
 
-Please adhere to Python best practices and coding style (PEP 8) when contributing code.
+2. **Select Drawing Mode:**
+   - Choose between "box" for bounding boxes and "free" for free-form polygons using the "Mode" dropdown in the toolbar.
 
-## License
+3. **Choose a Color:**
+   - Select a color from the color palette in the toolbar. Each color can represent a different object class, enhancing visual organization. Click on a color square to activate it.
 
-This work is licensed under a [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License][cc-by-nc-sa].
+4. **Drawing Annotations:**
+   - **Box Mode:**
+     - Click and drag on the image to draw a bounding box. Release the mouse button to complete the box.
+   - **Free Mode:**
+     - Click on the image to start drawing a polygon.
+     - Continue clicking to add points to the polygon.
+     - **Double-click near the starting point to close the polygon and assign a class ID.** A dialog will prompt you to select a class for the polygon.
+     - In "Continuous" free mode (checkbox in the toolbar), you can keep adding points to the current polygon of the selected color without needing to re-select the color.
 
-[![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
+5. **Navigating Images:**
+   - If you opened a folder, use the file list on the right to select images.
+   - Use the **up and down arrow keys** to quickly navigate through the images in the file list.
 
-[![CC BY-NC-SA 4.0][cc-by-nc-sa-image]][cc-by-nc-sa]
+6. **Zoom & Pan:**
+   - Use the "Zoom" dropdown to select a predefined zoom level (25% to 300%).
+   - Click "Fit" to automatically zoom the image to fit the workspace.
+   - Right-click and drag to pan the image within the workspace.
+   - Use the mouse wheel to zoom in and out, pivoting around the mouse cursor location.
 
-[cc-by-nc-sa]: http://creativecommons.org/licenses/by-nc-sa/4.0/
-[cc-by-nc-sa-image]: https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png
-[cc-by-nc-sa-shield]: https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg
+7. **Generate Label File:**
+   - Once you have labeled an image, click "Generate Label" to save the labels in a `.txt` file in the same directory as the image, following the YOLO format. A tooltip will confirm successful label generation.
+
+8. **Loading Existing Labels:**
+    - Click "Open Label File" to load existing YOLO `.txt` label files for the currently opened image. This allows you to edit or continue labeling previously annotated images.
+
+9. **Class Selection:**
+    - When closing a free-form polygon or creating a bounding box, a class selection dialog will appear, allowing you to assign a predefined class to your annotation.
+
+## 📁 Directory Structure
+
+```
+EZLabel/
+├── main_app.py         # Main application script - launches EZLabel
+├── modules/            # Directory containing application modules
+│   ├── balloon_zoom.py   # Module for the zoom balloon functionality
+│   ├── class_selection.py# Module for the class selection dialog
+│   ├── color_palette.py  # Module for the color palette dialog (if implemented separately)
+│   ├── labels_handler.py # Module for loading and saving YOLO label files
+│   ├── shapes.py         # Defines data classes for points and polygons
+│   ├── tooltip.py        # Module for creating tooltips
+│   ├── workspace.py      # Module for the main image workspace frame
+│   ├── workspace_draw.py # Module handling canvas drawing operations
+│   ├── workspace_events.py# Module managing event handling (mouse, keyboard)
+│   └── workspace_polygons.py# Module for managing polygon data and operations
+└── README.md           # This README file
+```
+
+## ⚙️ Dependencies
+
+- Python (3.x recommended)
+- Tkinter (standard Python GUI library)
+- Pillow (PIL Fork) - for image processing (`pip install Pillow`)
+- ttk (Tk themed widgets, usually included with Tkinter)
+
+## 🤝 Contributing
+
+Contributions to EZLabel are welcome! If you have suggestions for improvements, bug fixes, or new features, please feel free to fork the repository and submit a pull request. For major changes, it's recommended to open an issue first to discuss your ideas.
+
+## 📜 License
+
+[Specify License here, e.g., MIT License, Apache 2.0, etc. If none, consider adding one.]
+
+---
