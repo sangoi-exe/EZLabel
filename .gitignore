@@ -13,6 +13,7 @@ data.yaml
 # Distribution / packaging
 .Python
 build/
+train/
 dataset/
 develop-eggs/
 dist/

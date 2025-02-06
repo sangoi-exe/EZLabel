@@ -28,36 +28,27 @@ class LabelHandler:
         self.color_index = 0
         self.polygon_counter = 0
 
-    def save_labels(self, polygons, img_width, img_height):
-        """
-        Saves each polygon in YOLO segmentation format:
-            class x1 y1 x2 y2 ... xN yN
-        All coords normalized to [0..1].
-        """
+    def save_labels(self, polygons, img_width, img_height, label_dest_path=None):
+        """Saves each polygon in YOLO segmentation format: class x1 y1 x2 y2 ... xN yN"""
         if not self.current_image_path:
             return
 
-        folder = os.path.dirname(self.current_image_path)
-        base_name = os.path.splitext(os.path.basename(self.current_image_path))[0]
-        txt_path = os.path.join(folder, base_name + ".txt")
+        if label_dest_path is None:
+            folder = os.path.dirname(self.current_image_path)
+            base_name = os.path.splitext(os.path.basename(self.current_image_path))[0]
+            label_dest_path = os.path.join(folder, base_name + ".txt")
 
         lines = []
-        for poly_key, poly in polygons.items():
-            pts = poly["points"]
-            if len(pts) < 3:
-                # Segmentation normally expects >= 3 points for a valid polygon.
+        for poly in polygons.values():
+            if len(poly["points"]) < 3:
                 continue
-
             cls_id = poly.get("class_id", "0")
-            # Normalize points to [0..1] range
-            coords_norm = [f"{p.x / img_width:.6f} {p.y / img_height:.6f}" for p in pts]
+            coords_norm = [
+                f"{p.x / img_width:.6f} {p.y / img_height:.6f}" for p in poly["points"]
+            ]
+            lines.append(f"{cls_id} " + " ".join(coords_norm))
 
-            # Write "class" followed by all normalized (x, y) pairs
-            line = f"{cls_id} " + " ".join(coords_norm)
-            lines.append(line)
-
-        # Write labels to file
-        with open(txt_path, "w", encoding="utf-8") as f:
+        with open(label_dest_path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
 
     def load_labels(self, txt_path, workspace_frame):
@@ -72,7 +63,7 @@ class LabelHandler:
         img_w = workspace_frame.image.width
         img_h = workspace_frame.image.height
 
-        self.color_index = 0
+        self.color_index = 0  # Reset color index when loading new labels
         self.polygon_counter = 0
 
         with open(txt_path, "r", encoding="utf-8") as f:
@@ -120,14 +111,12 @@ class LabelHandler:
 
                     polygon_dict = {
                         "points": poly_points,
-                        "color": color,
+                        "color": color,  # Usa a cor atribuída
                         "class_id": str(int(cls_id)),
                         "is_closed": True,
                     }
 
-                    self.polygon_counter += 1
-                    poly_key = f"poly_{self.polygon_counter}"
-                    workspace_frame.poly_manager.polygons[poly_key] = polygon_dict
+                    workspace_frame.poly_manager.polygons[color] = polygon_dict
 
                 elif len(parts) >= 5 and len(parts) % 2 == 1:
                     try:
@@ -155,11 +144,7 @@ class LabelHandler:
                                 "is_closed": True,
                             }
 
-                            self.polygon_counter += 1
-                            poly_key = f"poly_{self.polygon_counter}"
-                            workspace_frame.poly_manager.polygons[poly_key] = (
-                                polygon_dict
-                            )
+                            workspace_frame.poly_manager.polygons[color] = polygon_dict
 
                     except ValueError:
                         continue

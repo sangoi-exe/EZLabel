@@ -1,3 +1,4 @@
+import shutil
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import os
@@ -72,6 +73,10 @@ class MainApplication(tk.Tk):
         self.label_handler = LabelHandler()
 
         self.active_color = "#FF0000"
+
+        # Added key bindings for up and down arrow keys
+        self.bind_all("<Key-Up>", self._on_key_up)  # Binding for Up arrow key
+        self.bind_all("<Key-Down>", self._on_key_down)  # Binding for Down arrow key
 
         self._create_toolbar()
 
@@ -185,18 +190,73 @@ class MainApplication(tk.Tk):
         self.files_listbox.pack(side=tk.TOP, fill=tk.Y, expand=True)
         self.files_listbox.bind("<<ListboxSelect>>", self._on_file_selected)
 
-    def _on_file_selected(self, event):
+    def _on_file_selected(self, event=None, index=None):
         """Handles the selection of a file from the listbox."""
         if not self.current_folder:
             return
-        selection = event.widget.curselection()
-        if selection:
-            index = selection[0]
-            filename = event.widget.get(index)
-            filepath = os.path.join(self.current_folder, filename)
-            if os.path.isfile(filepath):
-                self.workspace_frame.load_image(filepath)
-                self.label_handler.current_image_path = filepath
+        if index is None:
+            selection = event.widget.curselection()
+            if selection:
+                index = selection[0]
+            else:
+                return
+        filename = self.files_listbox.get(index)
+        filepath = os.path.join(self.current_folder, filename)
+        if os.path.isfile(filepath):
+            self.workspace_frame.load_image(filepath)
+            self.label_handler.current_image_path = filepath
+
+            # Check if a .txt file with the same name exists and load labels
+            # Added code to load labels automatically
+            base_name, ext = os.path.splitext(filename)
+            txt_filename = base_name + ".txt"
+            txt_filepath = os.path.join(self.current_folder, txt_filename)
+            if os.path.exists(txt_filepath):
+                self.label_handler.load_labels(txt_filepath, self.workspace_frame)
+        else:
+            messagebox.showwarning("Warning", f"File not found: {filepath}")
+
+    def _on_key_up(self, event):
+        """Selects the previous file in the list."""
+        # Added method to handle Up arrow key
+        current_selection = self.files_listbox.curselection()
+        if current_selection:
+            index = current_selection[0]
+            if index > 0:
+                self.files_listbox.selection_clear(index)
+                index -= 1
+                self.files_listbox.selection_set(index)
+                self.files_listbox.activate(index)
+                self.files_listbox.see(index)
+                self._on_file_selected(index=index)
+        else:
+            # If nothing is selected, select the first item
+            if self.files_listbox.size() > 0:
+                index = 0
+                self.files_listbox.selection_set(index)
+                self.files_listbox.activate(index)
+                self._on_file_selected(index=index)
+
+    def _on_key_down(self, event):
+        """Selects the next file in the list."""
+        # Added method to handle Down arrow key
+        current_selection = self.files_listbox.curselection()
+        if current_selection:
+            index = current_selection[0]
+            if index < self.files_listbox.size() - 1:
+                self.files_listbox.selection_clear(index)
+                index += 1
+                self.files_listbox.selection_set(index)
+                self.files_listbox.activate(index)
+                self.files_listbox.see(index)
+                self._on_file_selected(index=index)
+        else:
+            # If nothing is selected, select the first item
+            if self.files_listbox.size() > 0:
+                index = 0
+                self.files_listbox.selection_set(index)
+                self.files_listbox.activate(index)
+                self._on_file_selected(index=index)
 
     def open_folder(self):
         """Opens a folder and lists the image files in the files frame."""
@@ -208,17 +268,18 @@ class MainApplication(tk.Tk):
             self._update_files_list()
 
     def _update_files_list(self):
-        """Updates the files listbox with files from the current folder."""
+        """
+        Atualiza a listbox dos arquivos do diretório corrente.
+        Agora lista TODAS as imagens, permitindo que as labels sejam carregadas automaticamente
+        ao selecionar o arquivo, mesmo que o .txt correspondente já exista.
+        """
         self.files_listbox.delete(0, tk.END)
         if not self.current_folder:
             return
         image_extensions = (".jpg", ".jpeg", ".png", ".bmp", ".gif")
-        files = [
-            f
-            for f in os.listdir(self.current_folder)
-            if f.lower().endswith(image_extensions)
-        ]
-        for f in files:
+        for f in os.listdir(self.current_folder):
+            if not f.lower().endswith(image_extensions):
+                continue
             self.files_listbox.insert(tk.END, f)
 
     def zoom_fit(self):
@@ -296,7 +357,7 @@ class MainApplication(tk.Tk):
                 messagebox.showwarning("Warning", f"File not found: {txt_path}")
 
     def generate_label_file(self):
-        """Generates the YOLO label file with all bounding boxes drawn."""
+        """Generates YOLO label file and moves the image to the train dataset structure."""
         if not self.workspace_frame.image:
             messagebox.showwarning("Warning", "No image loaded.")
             return
@@ -305,11 +366,37 @@ class MainApplication(tk.Tk):
             messagebox.showwarning("Warning", "No polygons drawn to generate labels.")
             return
 
+        train_dir = os.path.join(os.getcwd(), "train")
+        images_dir = os.path.join(train_dir, "images")
+        labels_dir = os.path.join(train_dir, "labels")
+        os.makedirs(images_dir, exist_ok=True)
+        os.makedirs(labels_dir, exist_ok=True)
+
+        current_image_path = self.label_handler.current_image_path
+        if not current_image_path:
+            messagebox.showwarning("Warning", "No image path set.")
+            return
+
+        base_name = os.path.splitext(os.path.basename(current_image_path))[0]
+        label_dest_path = os.path.join(labels_dir, base_name + ".txt")
+
         self.label_handler.save_labels(
             self.workspace_frame.polygons,
             self.workspace_frame.image.width,
             self.workspace_frame.image.height,
+            label_dest_path=label_dest_path,
         )
+
+        image_dest_path = os.path.join(images_dir, os.path.basename(current_image_path))
+        try:
+            shutil.move(current_image_path, image_dest_path)
+        except Exception as e:
+            messagebox.showerror("Error", f"Error moving image file: {str(e)}")
+            return
+
+        self.workspace_frame.clear_workspace()
+        self._update_files_list()
+        messagebox.showinfo("Success", "Label generated and image moved successfully.")
 
         # Show tooltip near the 'Generate Label' button
         tip = Tooltip(self.btn_generate, "Label generated successfully")
