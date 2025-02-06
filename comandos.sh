@@ -1,0 +1,1 @@
+Optimize-VHD -Path "C:\Users\lucas\AppData\Local\Docker\wsl\data\docker-desktop-data.vhdx" -Mode Full

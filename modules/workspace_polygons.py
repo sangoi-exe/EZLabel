@@ -29,7 +29,7 @@ class WorkspacePolygons:
         """
         if color not in self.polygons:
             p = PointData(cx, cy)
-            self.polygons[color] = {
+            self.polygons[color] = {  # Modificação 1: Usa a cor como chave do polígono.
                 "points": [p],
                 "color": color,
                 "class_id": "",
@@ -69,7 +69,7 @@ class WorkspacePolygons:
             PointData(min_x, max_y),
         ]
 
-        self.polygons[color] = {
+        self.polygons[color] = {  # Modificação 2: Usa a cor como chave do polígono.
             "points": rect_points,
             "color": color,
             "class_id": "",

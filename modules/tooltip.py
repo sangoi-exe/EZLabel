@@ -21,7 +21,7 @@ class Tooltip:
             return
 
         x = self.widget.winfo_rootx() + self.widget.winfo_width() + 10
-        y = self.widget.winfo_rooty() + int(self.widget.winfo_height() / 2)
+        y = self.widget.winfo_rooty() + int(self.widget.winfo_height())
         self.tipwindow = tw = tk.Toplevel(self.widget)
         tw.wm_overrideredirect(True)
         tw.wm_geometry(f"+{x}+{y}")

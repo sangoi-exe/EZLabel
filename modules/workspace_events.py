@@ -1,3 +1,4 @@
+# modules/workspace_events.py
 # --------------------------------------------------------------------------
 # File: modules/workspace_events.py
 # Description: Contains all event-related logic (mouse, keyboard, etc.).
@@ -51,7 +52,7 @@ class WorkspaceEvents:
         pm = ws.poly_manager
 
         cx, cy = ws._to_image_coords(event.x, event.y)
-        found_point, poly_color, pt_idx = ws._find_point_near(cx, cy)
+        found_point, poly_key, pt_idx = ws._find_point_near(cx, cy)
         if found_point:
             # If clicked near an existing point, prepare to drag it
             self.dragged_point = found_point
@@ -66,9 +67,11 @@ class WorkspaceEvents:
         # Logic for "free" mode: either append a point or create a new polygon
         if ws.draw_mode == "free":
             if poly:
+                # poly_key, poly_data = poly # Removido: Linha original que causava erro
+                poly_data = poly  # Adicionado: 'poly' já é o dicionário do polígono
                 # Append point to an existing polygon of the current color
-                if not poly["is_closed"]:
-                    poly["points"].append(ws.PointDataClass(cx, cy))
+                if not poly_data["is_closed"]:
+                    poly_data["points"].append(ws.PointDataClass(cx, cy))
                     ws.drawer.draw_all()
                     return
             else:
@@ -226,8 +229,11 @@ class WorkspaceEvents:
             # If there's no polygon for the selected color, do nothing
             return
 
+        # poly_key, poly_data = poly # Removido: Linha original que causava erro (desnecessário aqui)
+        poly_data = poly  # Adicionado: 'poly' já é o dicionário do polígono
+
         cx, cy = ws._to_image_coords(event.x, event.y)
-        points = poly["points"]
+        points = poly_data["points"]
         if not points:
             return
 
@@ -235,25 +241,24 @@ class WorkspaceEvents:
         dist_to_first = math.dist((first_pt.x, first_pt.y), (cx, cy))
 
         # 1) Se polígono está aberto e double-click é perto do primeiro ponto => fechar polígono
-        if not poly["is_closed"] and dist_to_first < 20 and len(points) >= 2:
+        if not poly_data["is_closed"] and dist_to_first < 20 and len(points) >= 2:
             # Fecha polígono unindo último ao primeiro
             if points[-1] != first_pt:
                 points.append(first_pt)
-            poly["is_closed"] = True
+            poly_data["is_closed"] = True
             class_id = ws.prompt_class_selection()
-            poly["class_id"] = class_id if class_id else "0"
+            poly_data["class_id"] = class_id if class_id else "0"
             ws.drawer.draw_all()
             return
 
         # 2) Se o polígono está fechado, podemos inserir ponto extra se clique duplo ocorreu numa reta
-        if poly["is_closed"]:
+        if poly_data["is_closed"]:
             found_segment = ws._find_segment_near(cx, cy, radius=10)
             if found_segment:
-                seg_color_key, seg_index, x_ins, y_ins = found_segment
-                # Checar se a cor do segmento é a cor do polígono atual
-                if seg_color_key == color:
-                    pm.insert_point_on_segment(color, seg_index, x_ins, y_ins)
-                    ws.drawer.draw_all()
+                seg_poly_key, seg_index, x_ins, y_ins = found_segment
+                # Checar se a cor do segmento é a cor do polígono atual # Removido: Não precisa mais checar a cor, pois _find_segment_near já retorna a chave.
+                pm.insert_point_on_segment(seg_poly_key, seg_index, x_ins, y_ins)
+                ws.drawer.draw_all()
 
     def _on_mouse_move(self, event):
         """Updates cursor; no snap to pointer warping now."""

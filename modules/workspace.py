@@ -24,7 +24,7 @@ class WorkspaceFrame(tk.Frame):
 
     def __init__(self, parent, class_definitions):
         super().__init__(parent)
-        self.app = parent
+
         self.parent = parent
         self.image = None
         self.class_definitions = class_definitions
@@ -54,6 +54,12 @@ class WorkspaceFrame(tk.Frame):
         self.drawer = WorkspaceDrawer(self)
         self.events = WorkspaceEvents(self)
         self.events.bind_all()
+
+    def clear_workspace(self):
+        """Clears the workspace: removes all polygons, clears the image, and resets the canvas."""
+        self.poly_manager.clear_all()  # Clears polygons
+        self.image = None  # Removes loaded image
+        self.canvas.delete("all")  # Clears the canvas
 
     def set_manual_zoom(self, zoom_factor):
         """Sets the zoom to the given factor and re-centers the image."""
@@ -94,14 +100,15 @@ class WorkspaceFrame(tk.Frame):
         return class_id
 
     def load_image(self, path):
-        """Loads image, resets zoom/pan, clears polygons, and redraws."""
+        """
+        Loads image, resets zoom/pan to fit the image, clears polygons, and redraws.
+        Alteração: o zoom inicial agora é calculado chamando zoom_to_fit().
+        """
         self.image = Image.open(path)
         self.base_width = self.image.width
         self.base_height = self.image.height
-        self.scale = 1.0
-        self.offset_x = 0
-        self.offset_y = 0
         self.poly_manager.clear_all()
+        self.zoom_to_fit()  # Ajusta o zoom para FIT, dimensionando a imagem ao canvas
         self.drawer.draw_all()
 
     def set_continuous_mode(self, val):
@@ -152,7 +159,7 @@ class WorkspaceFrame(tk.Frame):
         cy = y * self.scale + self.offset_y
         return cx, cy
 
-    def _find_point_near(self, x, y, radius=10):
+    def _find_point_near(self, x, y, radius=20):
         """
         Returns (closest_point, polygon_key, index_in_polygon)
         if found within 'radius' distance on canvas.
@@ -177,14 +184,14 @@ class WorkspaceFrame(tk.Frame):
             else (None, None, None)
         )
 
-    def _check_near_point(self, x, y, radius=10):
+    def _check_near_point(self, x, y, radius=20):
         """
         Returns the nearest point if inside 'radius', or None.
         """
         found_point, _, _ = self._find_point_near(x, y, radius)
         return found_point
 
-    def _find_segment_near(self, x, y, radius=10):
+    def _find_segment_near(self, x, y, radius=20):
         """
         Searches all polygons for a line segment near (x, y).
         Returns (polygon_key, segment_index, x_proj, y_proj) if found.
