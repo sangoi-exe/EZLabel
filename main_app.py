@@ -17,26 +17,24 @@ class Tooltip:
         self.tipwindow = None
 
     def show(self):
-        """Displays the tooltip."""
+        """Displays the tooltip at a fixed position relative to the main window."""
         if self.tipwindow:
             return
-
-        x = self.widget.winfo_rootx() + self.widget.winfo_width() + 10
-        y = self.widget.winfo_rooty() + int(self.widget.winfo_height() / 2)
-        self.tipwindow = tw = tk.Toplevel(self.widget)
-        tw.wm_overrideredirect(True)
-        tw.wm_geometry(f"+{x}+{y}")
+        # Retrieve the main application window
+        master = self.widget.winfo_toplevel()
+        # Calculate position: bottom-right area of the main window
+        x = master.winfo_x() + master.winfo_width() - 960
+        y = master.winfo_y() + master.winfo_height() - 700
+        self.tipwindow = tip = tk.Toplevel(master)
+        tip.wm_overrideredirect(True)  # Remove window decorations
+        tip.geometry(f"200x50+{x}+{y}")  # Set fixed size and position
+        # Create and pack the tooltip label
         label = tk.Label(
-            tw,
-            text=self.text,
-            justify=tk.LEFT,
-            background="#ffffe0",
-            relief=tk.SOLID,
-            borderwidth=1,
-            font=("tahoma", "8", "normal"),
+            tip, text=self.text, bg="yellow", relief="solid", borderwidth=1
         )
-        label.pack(ipadx=1)
-        self.widget.after(self.timeout, self.hide)
+        label.pack(fill=tk.BOTH, expand=True)
+        # Automatically destroy the tooltip after the specified timeout
+        tip.after(self.timeout, tip.destroy)
 
     def hide(self):
         """Hides the tooltip."""
@@ -46,8 +44,6 @@ class Tooltip:
 
 
 class MainApplication(tk.Tk):
-    """Main window with toolbar, including color squares for polygon selection."""
-
     def __init__(self):
         super().__init__()
         self.title("YOLO Bounding Box Labeling App")
@@ -65,25 +61,22 @@ class MainApplication(tk.Tk):
             "12": "Titulo_Frente",
             "13": "Titulo_Verso",
             "10": "Cert Nasc",
-            # "7": "CPF_Frente",
-            # "8": "CPF_Verso",
-            # "9": "Doc_Foto",
-            # "0": "Fatura_Luz",
-            # "1": "Fatura_Agua",
-            # "2": "Fatura_Telefone",
-            # "3": "Cabeçalho",
         }
 
         self.label_handler = LabelHandler()
-
         self.active_color = "#FF0000"
 
-        # Added key bindings for up and down arrow keys
-        self.bind_all("<Key-Up>", self._on_key_up)  # Binding for Up arrow key
-        self.bind_all("<Key-Down>", self._on_key_down)  # Binding for Down arrow key
+        # Bindings for arrow keys and shortcuts
+        self.bind_all("<Key-Up>", self._on_key_up)
+        self.bind_all("<Key-Down>", self._on_key_down)
         self.bind_all("<Key-r>", self._on_shortcut_rect)
         self.bind_all("<Key-b>", self._on_shortcut_box)
         self.bind_all("<Key-f>", self._on_shortcut_free)
+        # Additional key bindings: W and A for previous, S and D for next image
+        self.bind_all("<Key-w>", self._on_key_up)
+        self.bind_all("<Key-a>", self._on_key_up)
+        self.bind_all("<Key-s>", self._on_key_down)
+        self.bind_all("<Key-d>", self._on_key_down)
 
         self._create_toolbar()
 
@@ -98,8 +91,22 @@ class MainApplication(tk.Tk):
         self.files_frame.grid(row=1, column=1, sticky="ns")
 
         self._create_files_list()
-
         self.current_folder = None
+
+    def open_folder(self):
+        """Opens a folder, lists image files and auto-selects the first image."""
+        folder_selected = filedialog.askdirectory(
+            parent=self, title="Select a folder", mustexist=True
+        )
+        if folder_selected:
+            self.current_folder = folder_selected
+            self._update_files_list()
+            if self.files_listbox.size() > 0:
+                # Automatically select and load the first image
+                self.files_listbox.selection_clear(0, tk.END)
+                self.files_listbox.selection_set(0)
+                self.files_listbox.activate(0)
+                self._on_file_selected(index=0)
 
     def _on_shortcut_rect(self, event):
         """Shortcut: set drawing mode to 'rect'."""
@@ -126,16 +133,22 @@ class MainApplication(tk.Tk):
         btn_open_img.pack(side=tk.LEFT, padx=5, pady=2)
 
         # "Open Label" button
-        btn_open_label = tk.Button(toolbar, text="Open Label File", command=self.open_label_file)
+        btn_open_label = tk.Button(
+            toolbar, text="Open Label File", command=self.open_label_file
+        )
         btn_open_label.pack(side=tk.LEFT, padx=5, pady=2)
 
         # "Open Folder" button
-        btn_open_folder = tk.Button(toolbar, text="Open Folder", command=self.open_folder)
+        btn_open_folder = tk.Button(
+            toolbar, text="Open Folder", command=self.open_folder
+        )
         btn_open_folder.pack(side=tk.LEFT, padx=5, pady=2)
 
         # Draw mode combobox (now including "rect")
         tk.Label(toolbar, text="Mode:").pack(side=tk.LEFT, padx=5)
-        self.mode_combo = ttk.Combobox(toolbar, values=["box", "free", "rect"], state="readonly", width=6)
+        self.mode_combo = ttk.Combobox(
+            toolbar, values=["box", "free", "rect"], state="readonly", width=6
+        )
         self.mode_combo.current(1)
         self.mode_combo.bind("<<ComboboxSelected>>", self._on_mode_changed)
         self.mode_combo.pack(side=tk.LEFT, padx=2)
@@ -156,7 +169,9 @@ class MainApplication(tk.Tk):
         btn_zoom_fit.pack(side=tk.LEFT, padx=2)
 
         # "Generate Label" button
-        btn_generate = tk.Button(toolbar, text="Generate Label", command=self.generate_label_file)
+        btn_generate = tk.Button(
+            toolbar, text="Generate Label", command=self.generate_label_file
+        )
         btn_generate.pack(side=tk.LEFT, padx=5, pady=2)
         self.btn_generate = btn_generate  # Store reference for tooltip
 
@@ -170,6 +185,15 @@ class MainApplication(tk.Tk):
         )
         self.continuous_check.pack(side=tk.LEFT, padx=5, pady=2)
         self.continuous_check.config(state="active")
+
+        # New Checkbutton for "Overwrite Label" functionality
+        self.overwrite_label_var = tk.BooleanVar(value=False)
+        self.overwrite_check = tk.Checkbutton(
+            toolbar,
+            text="Overwrite Label",
+            variable=self.overwrite_label_var,
+        )
+        self.overwrite_check.pack(side=tk.LEFT, padx=5, pady=2)
 
         # Color squares for polygon selection
         color_list = [
@@ -198,7 +222,9 @@ class MainApplication(tk.Tk):
     def _create_files_list(self):
         """Creates the listbox to display files in the selected folder."""
         tk.Label(self.files_frame, text="Files:").pack(side=tk.TOP, padx=5, pady=5)
-        self.files_listbox = tk.Listbox(self.files_frame, width=30, height=25, selectmode=tk.SINGLE)
+        self.files_listbox = tk.Listbox(
+            self.files_frame, width=30, height=25, selectmode=tk.SINGLE
+        )
         self.files_listbox.pack(side=tk.TOP, fill=tk.Y, expand=True)
         self.files_listbox.bind("<<ListboxSelect>>", self._on_file_selected)
 
@@ -271,11 +297,19 @@ class MainApplication(tk.Tk):
                 self._on_file_selected(index=index)
 
     def open_folder(self):
-        """Opens a folder and lists the image files in the files frame."""
-        folder_selected = filedialog.askdirectory(parent=self, title="Select a folder", mustexist=True)
+        """Opens a folder, lists image files and auto-selects the first image."""
+        folder_selected = filedialog.askdirectory(
+            parent=self, title="Select a folder", mustexist=True
+        )
         if folder_selected:
             self.current_folder = folder_selected
             self._update_files_list()
+            if self.files_listbox.size() > 0:
+                # Automatically select and load the first image
+                self.files_listbox.selection_clear(0, tk.END)
+                self.files_listbox.selection_set(0)
+                self.files_listbox.activate(0)
+                self._on_file_selected(index=0)
 
     def _update_files_list(self):
         """
@@ -367,7 +401,10 @@ class MainApplication(tk.Tk):
                 messagebox.showwarning("Warning", f"File not found: {txt_path}")
 
     def generate_label_file(self):
-        """Generates YOLO label file and moves the image to the train dataset structure."""
+        """Generates a YOLO label file and then advances to the next image.
+        If 'Overwrite Label' is activated, the label is saved alongside the image;
+        otherwise, the image is moved to the training dataset structure.
+        """
         if not self.workspace_frame.image:
             messagebox.showwarning("Warning", "No image loaded.")
             return
@@ -376,41 +413,82 @@ class MainApplication(tk.Tk):
             messagebox.showwarning("Warning", "No polygons drawn to generate labels.")
             return
 
-        train_dir = os.path.join(os.getcwd(), "train")
-        images_dir = os.path.join(train_dir, "images")
-        labels_dir = os.path.join(train_dir, "labels")
-        os.makedirs(images_dir, exist_ok=True)
-        os.makedirs(labels_dir, exist_ok=True)
-
         current_image_path = self.label_handler.current_image_path
         if not current_image_path:
             messagebox.showwarning("Warning", "No image path set.")
             return
 
-        base_name = os.path.splitext(os.path.basename(current_image_path))[0]
-        label_dest_path = os.path.join(labels_dir, base_name + ".txt")
+        if self.overwrite_label_var.get():
+            # Save label in the same folder as the image
+            label_dest_path = os.path.splitext(current_image_path)[0] + ".txt"
+            self.label_handler.save_labels(
+                self.workspace_frame.polygons,
+                self.workspace_frame.image.width,
+                self.workspace_frame.image.height,
+                label_dest_path=label_dest_path,
+            )
+        else:
+            # Save label in train dataset structure and move the image
+            train_dir = os.path.join(os.getcwd(), "train")
+            images_dir = os.path.join(train_dir, "images")
+            labels_dir = os.path.join(train_dir, "labels")
+            os.makedirs(images_dir, exist_ok=True)
+            os.makedirs(labels_dir, exist_ok=True)
 
-        self.label_handler.save_labels(
-            self.workspace_frame.polygons,
-            self.workspace_frame.image.width,
-            self.workspace_frame.image.height,
-            label_dest_path=label_dest_path,
-        )
+            base_name = os.path.splitext(os.path.basename(current_image_path))[0]
+            label_dest_path = os.path.join(labels_dir, base_name + ".txt")
 
-        image_dest_path = os.path.join(images_dir, os.path.basename(current_image_path))
-        try:
-            shutil.move(current_image_path, image_dest_path)
-        except Exception as e:
-            messagebox.showerror("Error", f"Error moving image file: {str(e)}")
-            return
+            self.label_handler.save_labels(
+                self.workspace_frame.polygons,
+                self.workspace_frame.image.width,
+                self.workspace_frame.image.height,
+                label_dest_path=label_dest_path,
+            )
 
-        self.workspace_frame.clear_workspace()
-        self._update_files_list()
-        messagebox.showinfo("Success", "Label generated and image moved successfully.")
+            image_dest_path = os.path.join(
+                images_dir, os.path.basename(current_image_path)
+            )
+            try:
+                shutil.move(current_image_path, image_dest_path)
+            except Exception as e:
+                messagebox.showerror("Error", f"Error moving image file: {str(e)}")
+                return
+
+            self.workspace_frame.clear_workspace()
+            self._update_files_list()
+            messagebox.showinfo(
+                "Success", "Label generated and image moved successfully."
+            )
 
         # Show tooltip near the 'Generate Label' button
         tip = Tooltip(self.btn_generate, "Label generated successfully")
         tip.show()
+
+        # Advance to the next image after label generation
+        if self.files_listbox.size() > 0:
+            current_selection = self.files_listbox.curselection()
+            if current_selection:
+                current_index = current_selection[0]
+                if self.overwrite_label_var.get():
+                    # In overwrite mode, current image remains so select the next if available
+                    new_index = (
+                        current_index + 1
+                        if current_index < self.files_listbox.size() - 1
+                        else current_index
+                    )
+                else:
+                    # In non-overwrite mode, current image was moved so the next occupies the same index
+                    new_index = (
+                        current_index
+                        if current_index < self.files_listbox.size()
+                        else self.files_listbox.size() - 1
+                    )
+            else:
+                new_index = 0
+            self.files_listbox.selection_clear(0, tk.END)
+            self.files_listbox.selection_set(new_index)
+            self.files_listbox.activate(new_index)
+            self._on_file_selected(index=new_index)
 
     def set_zoom_percentage(self):
         """Prompts the user to input a new zoom percentage and updates the workspace."""
