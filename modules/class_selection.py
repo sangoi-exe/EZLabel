@@ -39,6 +39,18 @@ class ClassSelectionDialog:
                 column = 0
                 row += 1
 
+        # Center the dialog relative to the parent window
+        self.dialog.update_idletasks()
+        parent_x = self.parent.winfo_rootx()
+        parent_y = self.parent.winfo_rooty()
+        parent_width = self.parent.winfo_width()
+        parent_height = self.parent.winfo_height()
+        dialog_width = self.dialog.winfo_width()
+        dialog_height = self.dialog.winfo_height()
+        pos_x = parent_x + (parent_width - dialog_width) // 2
+        pos_y = parent_y + (parent_height - dialog_height) // 2
+        self.dialog.geometry(f"+{pos_x}+{pos_y}")
+
     def _on_class_selected(self, class_id):
         self.selected_class_id = class_id
         self.dialog.destroy()

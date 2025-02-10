@@ -55,19 +55,23 @@ class MainApplication(tk.Tk):
         self.attributes("-topmost", False)
 
         self.class_definitions = {
-            # "0": "CNH_Aberta",
-            # "1": "CNH_Frente",
-            # "3": "CNH_Verso",
-            # "4": "RG_Aberta",
-            # "5": "RG_Frente",
-            # "6": "RG_Verso",
+            "0": "CNH_Aberta",
+            "1": "CNH_Frente",
+            "2": "CNH_Verso",
+            "3": "RG_Aberta",
+            "4": "RG_Frente",
+            "5": "RG_Verso",
+            "11": "Titulo_Aberto",
+            "12": "Titulo_Frente",
+            "13": "Titulo_Verso",
+            "10": "Cert Nasc",
             # "7": "CPF_Frente",
             # "8": "CPF_Verso",
             # "9": "Doc_Foto",
-            "0": "Fatura_Luz",
-            "1": "Fatura_Agua",
-            "2": "Fatura_Telefone",
-            "3": "Cabeçalho",
+            # "0": "Fatura_Luz",
+            # "1": "Fatura_Agua",
+            # "2": "Fatura_Telefone",
+            # "3": "Cabeçalho",
         }
 
         self.label_handler = LabelHandler()
@@ -77,6 +81,9 @@ class MainApplication(tk.Tk):
         # Added key bindings for up and down arrow keys
         self.bind_all("<Key-Up>", self._on_key_up)  # Binding for Up arrow key
         self.bind_all("<Key-Down>", self._on_key_down)  # Binding for Down arrow key
+        self.bind_all("<Key-r>", self._on_shortcut_rect)
+        self.bind_all("<Key-b>", self._on_shortcut_box)
+        self.bind_all("<Key-f>", self._on_shortcut_free)
 
         self._create_toolbar()
 
@@ -94,6 +101,21 @@ class MainApplication(tk.Tk):
 
         self.current_folder = None
 
+    def _on_shortcut_rect(self, event):
+        """Shortcut: set drawing mode to 'rect'."""
+        self.mode_combo.set("rect")
+        self._on_mode_changed(event)
+
+    def _on_shortcut_box(self, event):
+        """Shortcut: set drawing mode to 'box'."""
+        self.mode_combo.set("box")
+        self._on_mode_changed(event)
+
+    def _on_shortcut_free(self, event):
+        """Shortcut: set drawing mode to 'free'."""
+        self.mode_combo.set("free")
+        self._on_mode_changed(event)
+
     def _create_toolbar(self):
         """Creates a toolbar with color squares, zoom combobox, etc."""
         toolbar = tk.Frame(self, bd=2, relief=tk.RAISED)
@@ -104,22 +126,16 @@ class MainApplication(tk.Tk):
         btn_open_img.pack(side=tk.LEFT, padx=5, pady=2)
 
         # "Open Label" button
-        btn_open_label = tk.Button(
-            toolbar, text="Open Label File", command=self.open_label_file
-        )
+        btn_open_label = tk.Button(toolbar, text="Open Label File", command=self.open_label_file)
         btn_open_label.pack(side=tk.LEFT, padx=5, pady=2)
 
         # "Open Folder" button
-        btn_open_folder = tk.Button(
-            toolbar, text="Open Folder", command=self.open_folder
-        )
+        btn_open_folder = tk.Button(toolbar, text="Open Folder", command=self.open_folder)
         btn_open_folder.pack(side=tk.LEFT, padx=5, pady=2)
 
-        # Draw mode combobox
+        # Draw mode combobox (now including "rect")
         tk.Label(toolbar, text="Mode:").pack(side=tk.LEFT, padx=5)
-        self.mode_combo = ttk.Combobox(
-            toolbar, values=["box", "free"], state="readonly", width=6
-        )
+        self.mode_combo = ttk.Combobox(toolbar, values=["box", "free", "rect"], state="readonly", width=6)
         self.mode_combo.current(1)
         self.mode_combo.bind("<<ComboboxSelected>>", self._on_mode_changed)
         self.mode_combo.pack(side=tk.LEFT, padx=2)
@@ -140,9 +156,7 @@ class MainApplication(tk.Tk):
         btn_zoom_fit.pack(side=tk.LEFT, padx=2)
 
         # "Generate Label" button
-        btn_generate = tk.Button(
-            toolbar, text="Generate Label", command=self.generate_label_file
-        )
+        btn_generate = tk.Button(toolbar, text="Generate Label", command=self.generate_label_file)
         btn_generate.pack(side=tk.LEFT, padx=5, pady=2)
         self.btn_generate = btn_generate  # Store reference for tooltip
 
@@ -184,9 +198,7 @@ class MainApplication(tk.Tk):
     def _create_files_list(self):
         """Creates the listbox to display files in the selected folder."""
         tk.Label(self.files_frame, text="Files:").pack(side=tk.TOP, padx=5, pady=5)
-        self.files_listbox = tk.Listbox(
-            self.files_frame, width=30, height=25, selectmode=tk.SINGLE
-        )
+        self.files_listbox = tk.Listbox(self.files_frame, width=30, height=25, selectmode=tk.SINGLE)
         self.files_listbox.pack(side=tk.TOP, fill=tk.Y, expand=True)
         self.files_listbox.bind("<<ListboxSelect>>", self._on_file_selected)
 
@@ -260,9 +272,7 @@ class MainApplication(tk.Tk):
 
     def open_folder(self):
         """Opens a folder and lists the image files in the files frame."""
-        folder_selected = filedialog.askdirectory(
-            parent=self, title="Select a folder", mustexist=True
-        )
+        folder_selected = filedialog.askdirectory(parent=self, title="Select a folder", mustexist=True)
         if folder_selected:
             self.current_folder = folder_selected
             self._update_files_list()

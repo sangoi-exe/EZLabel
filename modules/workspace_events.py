@@ -44,47 +44,66 @@ class WorkspaceEvents:
         self.workspace.drawer.draw_all()
 
     def _on_left_click(self, event):
-        """
-        Handles left-click logic: find a point to drag, or create polygon points
-        based on 'box' vs 'free' modes, now tied to the active color.
-        """
         ws = self.workspace
-        pm = ws.poly_manager
-
         cx, cy = ws._to_image_coords(event.x, event.y)
+        if ws.draw_mode == "rect":
+            color = ws.line_color
+            # Rule 2: if the active color is already used, only allow drawing if clicking on an existing point
+            if color in ws.poly_manager.polygons:
+                if ws._check_near_point(cx, cy) is None:
+                    return
+                else:
+                    new_color = self.get_unused_color(ws)
+                    if new_color is None:
+                        return
+                    ws.set_line_color(new_color)
+                    color = new_color
+            # Start or finish the rectangle drawing (diagonal-based)
+            if not ws.is_drawing_segment:
+                ws.temp_point = ws.PointDataClass(cx, cy)
+                ws.is_drawing_segment = True
+            else:
+                p1 = ws.temp_point
+                p2 = ws.PointDataClass(cx, cy)
+                ws.poly_manager.create_box_polygon(p1, p2, color)
+                ws.is_drawing_segment = False
+                ws.temp_point = None
+            ws.drawer.draw_all()
+            return
+
+        # Existing logic for other modes
         found_point, poly_key, pt_idx = ws._find_point_near(cx, cy)
         if found_point:
-            # If clicked near an existing point, prepare to drag it
             self.dragged_point = found_point
             self.drag_start_x = cx
             self.drag_start_y = cy
             return
 
-        # Get the polygon associated with the current active color
         color = ws.line_color
-        poly = pm.get_polygon_by_color(color)
-
-        # Logic for "free" mode: either append a point or create a new polygon
         if ws.draw_mode == "free":
+            poly = ws.poly_manager.get_polygon_by_color(color)
             if poly:
-                # poly_key, poly_data = poly # Removido: Linha original que causava erro
-                poly_data = poly  # Adicionado: 'poly' já é o dicionário do polígono
-                # Append point to an existing polygon of the current color
-                if not poly_data["is_closed"]:
-                    poly_data["points"].append(ws.PointDataClass(cx, cy))
+                if not poly["is_closed"]:
+                    poly["points"].append(ws.PointDataClass(cx, cy))
                     ws.drawer.draw_all()
                     return
             else:
-                # Create a new polygon if no polygon exists for the current color
-                pm.create_or_append_free_polygon(cx, cy, color)
+                ws.poly_manager.create_or_append_free_polygon(cx, cy, color)
                 ws.drawer.draw_all()
                 return
 
-        # Logic for "box" mode: handle two-click bounding box creation
         if ws.draw_mode == "box":
             self._handle_box_click(cx, cy, color)
 
         ws.drawer.draw_all()
+
+    def get_unused_color(self, ws):
+        """Returns a color from the available palette that is not used in any polygon."""
+        available_colors = list(ws.parent.color_buttons.keys())
+        for col in available_colors:
+            if col not in ws.poly_manager.polygons:
+                return col
+        return None
 
     def _handle_box_click(self, cx, cy, color):
         """Box mode: two clicks = two points => bounding box polygon."""
@@ -185,9 +204,7 @@ class WorkspaceEvents:
         found_point, polygon_key, pt_idx = ws._find_point_near(cx, cy)
 
         if found_point:
-            ans = messagebox.askyesno(
-                "Delete Point", "Do you want to delete this point?"
-            )
+            ans = messagebox.askyesno("Delete Point", "Do you want to delete this point?")
             if ans:
                 pm.delete_point(polygon_key, pt_idx)
                 ws.drawer.draw_all()
