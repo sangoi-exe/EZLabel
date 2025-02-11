@@ -93,11 +93,22 @@ class WorkspaceFrame(tk.Frame):
         self.offset_y = (c_height - img_height) / 2
 
     def prompt_class_selection(self):
-        """Opens the class selection dialog and returns selected class ID."""
-
-        dialog = ClassSelectionDialog(self.parent, self.class_definitions)
-        class_id = dialog.show()
-        return class_id
+        rows_config = [
+            ["0", "1", "2"],
+            ["3", "4", "5"],
+            ["6", "7", "8"],
+            ["9", "10"],
+            ["11"],
+            ["12", "13", "14"],
+        ]
+        dialog = ClassSelectionDialog(
+            parent=self.parent,
+            class_definitions=self.class_definitions,
+            rows_config=rows_config,
+            button_width=12,
+            button_font_size=10,
+        )
+        return dialog.show()
 
     def load_image(self, path):
         """
@@ -178,7 +189,11 @@ class WorkspaceFrame(tk.Frame):
                     nearest_poly_key = key
                     nearest_pt_idx = i
 
-        return (nearest_point, nearest_poly_key, nearest_pt_idx) if nearest_point else (None, None, None)
+        return (
+            (nearest_point, nearest_poly_key, nearest_pt_idx)
+            if nearest_point
+            else (None, None, None)
+        )
 
     def _check_near_point(self, x, y, radius=20):
         """
@@ -198,12 +213,18 @@ class WorkspaceFrame(tk.Frame):
         for key, poly in self.poly_manager.polygons.items():
             pts = poly["points"]
             num_points = len(pts)
-            if num_points < 2:  # Polígono precisa de pelo menos 2 pontos para ter segmentos
+            if (
+                num_points < 2
+            ):  # Polígono precisa de pelo menos 2 pontos para ter segmentos
                 continue
             for i in range(num_points):  # Itera por todos os pontos
                 p1 = pts[i]
-                p2 = pts[(i + 1) % num_points]  # Próximo ponto, usando módulo para fechar o loop
-                dist_info = self._point_to_segment_distance(x, y, p1.x, p1.y, p2.x, p2.y)
+                p2 = pts[
+                    (i + 1) % num_points
+                ]  # Próximo ponto, usando módulo para fechar o loop
+                dist_info = self._point_to_segment_distance(
+                    x, y, p1.x, p1.y, p2.x, p2.y
+                )
                 dist, x_proj, y_proj, _ = dist_info
 
                 # Converte projeção para canvas coords para comparar com radius
