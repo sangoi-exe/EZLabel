@@ -181,3 +181,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+.vscode
+removeResultSufix.py
+yoloDetectDraw.py
+yoloLabeling.py
