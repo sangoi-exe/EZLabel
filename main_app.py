@@ -21,8 +21,8 @@ class Tooltip:
         if self.tipwindow:
             return
         master = self.widget.winfo_toplevel()
-        x = master.winfo_x() + master.winfo_width() - 960
-        y = master.winfo_y() + master.winfo_height() - 700
+        x = master.winfo_x() + master.winfo_width() - 500
+        y = master.winfo_y() + master.winfo_height() - 800
         self.tipwindow = tip = tk.Toplevel(master)
         tip.wm_overrideredirect(True)
         tip.geometry(f"200x50+{x}+{y}")
@@ -71,15 +71,17 @@ class MainApplication(tk.Tk):
         self.active_color = "#FF0000"
 
         # Bindings para teclas de navegação e modos de desenho
-        self.bind_all("<Key-Up>", self._on_key_up)
         self.bind_all("<Key-Down>", self._on_key_down)
-        self.bind_all("<Key-r>", self._on_shortcut_rect)
-        self.bind_all("<Key-b>", self._on_shortcut_box)
+        self.bind_all("<Key-Up>", self._on_key_up)
         self.bind_all("<Key-f>", self._on_shortcut_free)
+        self.bind_all("<Key-b>", self._on_shortcut_box)
+        self.bind_all("<Key-r>", self._on_shortcut_rect)
+        self.bind_all("<Key-c>", self._on_shortcut_c_lection)
         self.bind_all("<Key-w>", self._on_key_up)
         self.bind_all("<Key-a>", self._on_key_up)
         self.bind_all("<Key-s>", self._on_key_down)
         self.bind_all("<Key-d>", self._on_key_down)
+        self.bind_all("<Key-q>", self.generate_label_file)
 
         # Bind em cada cor usando as teclas numéricas (topo do teclado):
         self.bind_all("<Key-1>", lambda e: self._on_color_button_click("#FF0000"))
@@ -151,6 +153,11 @@ class MainApplication(tk.Tk):
         self.mode_combo.set("free")
         self._on_mode_changed(event)
 
+    def _on_shortcut_c_lection(self, event):
+        """Shortcut: set drawing mode to 'selection'."""
+        self.mode_combo.set("selection")
+        self._on_mode_changed(event)
+
     def _create_toolbar(self):
         """Creates a toolbar with color squares, zoom combobox, etc."""
         toolbar = tk.Frame(self, bd=2, relief=tk.RAISED)
@@ -170,8 +177,12 @@ class MainApplication(tk.Tk):
         btn_open_folder.pack(side=tk.LEFT, padx=5, pady=2)
 
         tk.Label(toolbar, text="Mode:").pack(side=tk.LEFT, padx=5)
+        # Adicionamos aqui o novo modo "selection"
         self.mode_combo = ttk.Combobox(
-            toolbar, values=["box", "free", "rect"], state="readonly", width=6
+            toolbar,
+            values=["box", "free", "rect", "selection"],
+            state="readonly",
+            width=9,
         )
         self.mode_combo.current(1)
         self.mode_combo.bind("<<ComboboxSelected>>", self._on_mode_changed)
@@ -335,7 +346,8 @@ class MainApplication(tk.Tk):
     def _on_mode_changed(self, event):
         new_mode = self.mode_combo.get()
         self.workspace_frame.set_draw_mode(new_mode)
-        if new_mode == "box":
+        # Desabilita o "Continuous" se for box ou selection; caso contrário, habilita
+        if new_mode in ("box", "selection"):
             self.continuous_check.config(state="disabled")
         else:
             self.continuous_check.config(state="normal")
@@ -379,7 +391,7 @@ class MainApplication(tk.Tk):
             else:
                 messagebox.showwarning("Warning", f"File not found: {txt_path}")
 
-    def generate_label_file(self):
+    def generate_label_file(self, event=None):
         if not self.workspace_frame.image:
             messagebox.showwarning("Warning", "No image loaded.")
             return
@@ -458,6 +470,8 @@ class MainApplication(tk.Tk):
             self.files_listbox.selection_set(new_index)
             self.files_listbox.activate(new_index)
             self._on_file_selected(index=new_index)
+            self._on_shortcut_free(event)
+            
 
     def set_zoom_percentage(self):
         def apply_zoom():

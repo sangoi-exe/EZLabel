@@ -1,9 +1,3 @@
-# ------------------------------------------------------------------------------
-# File: modules/workspace.py
-# Description: Contains the WorkspaceFrame class with references to the new
-#              managers (events, polygons, drawing).
-# ------------------------------------------------------------------------------
-
 import math
 import tkinter as tk
 from PIL import Image
@@ -40,12 +34,12 @@ class WorkspaceFrame(tk.Frame):
         self.line_color = "#FF0000"
 
         # States and references
-        self.draw_mode = "free"  # "box" or "free"
+        self.draw_mode = "free"  # "box", "free", "rect", "selection", etc.
         self.is_continuous_free_mode = True
         self.is_drawing_segment = False
         self.temp_point = None
 
-        # PointData constructor reference (para evitar import redundante em event handler)
+        # PointData constructor reference
         self.PointDataClass = PointData
 
         # Managers
@@ -57,9 +51,9 @@ class WorkspaceFrame(tk.Frame):
 
     def clear_workspace(self):
         """Clears the workspace: removes all polygons, clears the image, and resets the canvas."""
-        self.poly_manager.clear_all()  # Clears polygons
-        self.image = None  # Removes loaded image
-        self.canvas.delete("all")  # Clears the canvas
+        self.poly_manager.clear_all()
+        self.image = None
+        self.canvas.delete("all")
 
     def set_manual_zoom(self, zoom_factor):
         """Sets the zoom to the given factor and re-centers the image."""
@@ -93,6 +87,10 @@ class WorkspaceFrame(tk.Frame):
         self.offset_y = (c_height - img_height) / 2
 
     def prompt_class_selection(self):
+        """
+        Abre a dialog de seleção de classe. 
+        Nesta versão, destacamos em rosa claro os class_ids que já existem no polígono atual da imagem.
+        """
         rows_config = [
             ["0", "1", "2"],
             ["3", "4", "5"],
@@ -101,12 +99,20 @@ class WorkspaceFrame(tk.Frame):
             ["11"],
             ["12", "13", "14"],
         ]
+
+        # Descobre quais IDs estão presentes nos polígonos carregados
+        existing_class_ids = set()
+        for _, poly in self.poly_manager.polygons.items():
+            if "class_id" in poly and poly["class_id"]:
+                existing_class_ids.add(poly["class_id"])
+
         dialog = ClassSelectionDialog(
             parent=self.parent,
             class_definitions=self.class_definitions,
             rows_config=rows_config,
             button_width=12,
             button_font_size=10,
+            highlight_ids=existing_class_ids,
         )
         return dialog.show()
 
@@ -118,8 +124,8 @@ class WorkspaceFrame(tk.Frame):
         self.base_width = self.image.width
         self.base_height = self.image.height
         self.poly_manager.clear_all()
-        self.scale = 1.0  # Set zoom to 100%
-        self._center_image()  # Center image on canvas
+        self.scale = 1.0
+        self._center_image()
         self.drawer.draw_all()
 
     def set_continuous_mode(self, val):
@@ -129,7 +135,7 @@ class WorkspaceFrame(tk.Frame):
         self.drawer.draw_all()
 
     def set_draw_mode(self, mode):
-        """Sets draw mode to 'box' or 'free' and resets related states."""
+        """Sets draw mode and resets related states."""
         self.draw_mode = mode
         self.temp_point = None
         self.is_drawing_segment = False
@@ -213,33 +219,22 @@ class WorkspaceFrame(tk.Frame):
         for key, poly in self.poly_manager.polygons.items():
             pts = poly["points"]
             num_points = len(pts)
-            if (
-                num_points < 2
-            ):  # Polígono precisa de pelo menos 2 pontos para ter segmentos
+            if num_points < 2:
                 continue
-            for i in range(num_points):  # Itera por todos os pontos
+            for i in range(num_points):
                 p1 = pts[i]
-                p2 = pts[
-                    (i + 1) % num_points
-                ]  # Próximo ponto, usando módulo para fechar o loop
-                dist_info = self._point_to_segment_distance(
-                    x, y, p1.x, p1.y, p2.x, p2.y
-                )
+                p2 = pts[(i + 1) % num_points]
+                dist_info = self._point_to_segment_distance(x, y, p1.x, p1.y, p2.x, p2.y)
                 dist, x_proj, y_proj, _ = dist_info
 
-                # Converte projeção para canvas coords para comparar com radius
+                # Avalia distância em coords de canvas
                 cx_proj, cy_proj = self._to_canvas_coords(x_proj, y_proj)
                 cx_click, cy_click = self._to_canvas_coords(x, y)
                 canvas_dist = math.dist((cx_proj, cy_proj), (cx_click, cy_click))
 
                 if canvas_dist < best_dist and canvas_dist <= radius:
                     best_dist = canvas_dist
-                    best_result = (
-                        key,
-                        i,
-                        x_proj,
-                        y_proj,
-                    )  # 'i' é o índice do ponto inicial do segmento
+                    best_result = (key, i, x_proj, y_proj)
         return best_result
 
     def _point_to_segment_distance(self, px, py, x1, y1, x2, y2):

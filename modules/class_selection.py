@@ -15,6 +15,7 @@ class ClassSelectionDialog:
         rows_config=None,
         button_width=15,
         button_font_size=10,
+        highlight_ids=None,
     ):
         """
         :param parent: Janela/toplevel pai.
@@ -22,6 +23,7 @@ class ClassSelectionDialog:
         :param rows_config: Lista de listas, determinando quais IDs vão em cada linha. Ex: [["0","1"], ["2"], ["3","4"]].
         :param button_width: Largura do botão (int).
         :param button_font_size: Tamanho da fonte usada no texto do botão (int).
+        :param highlight_ids: Conjunto (set) de IDs de classe a serem destacados em cor rosa claro.
         """
         self.parent = parent
         self.class_definitions = class_definitions
@@ -33,6 +35,7 @@ class ClassSelectionDialog:
         self.rows_config = rows_config
         self.button_width = button_width
         self.button_font_size = button_font_size
+        self.highlight_ids = highlight_ids or set()
 
         self._create_dialog()
 
@@ -56,6 +59,9 @@ class ClassSelectionDialog:
                         font=("Arial", self.button_font_size),
                         command=lambda cid=class_id: self._on_class_selected(cid),
                     )
+                    # Se este ID de classe estiver nos 'highlight_ids', pinta o fundo em rosa claro.
+                    if class_id in self.highlight_ids:
+                        btn.config(bg="#ffb6c1")
                     btn.grid(
                         row=row_index, column=col_index, sticky="nsew", padx=5, pady=5
                     )

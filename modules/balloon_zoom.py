@@ -1,101 +1,130 @@
-# ------------------------------------------------------------------------------
-# File: modules/balloon_zoom.py
-# Description: Manages a small zoomed-in window (balloon) to help move points.
-# ------------------------------------------------------------------------------
-
 import tkinter as tk
 from PIL import Image, ImageTk, ImageDraw
 
 
 class BalloonZoom:
     """
-    Shows a small balloon window with a zoomed-in portion of the image
-    while dragging a point.
+    Exibe uma mini-janela (balloon) com parte da imagem ampliada
+    enquanto um ponto de polígono é arrastado.
     """
 
     def __init__(self, parent_canvas):
         self.parent_canvas = parent_canvas
         self.zoom_window = None
-        self.zoom_factor = 2.0  # how much to magnify
-        self.zoom_size = 50  # size of balloon region
+        # Aumentamos o tamanho da região do baloon e a ampliação.
+        # Se antes era 50 e zoom_factor=2.0, agora dobramos ambos.
+        self.zoom_size = 100  # área crua recortada da imagem
+        self.zoom_factor = 2.0  # fator de ampliação aplicado ao recorte
+        self.zoom_canvas = None
 
     def _create_window(self):
+        """Cria a janela de zoom (balloon), caso ainda não exista."""
         if self.zoom_window is None:
             self.zoom_window = tk.Toplevel(self.parent_canvas)
             self.zoom_window.attributes("-topmost", True)
+            # Deixa o balloon 50% transparente:
+            self.zoom_window.attributes("-alpha", 1)
+            # Remove a decoração da janela:
             self.zoom_window.overrideredirect(True)
-            self.zoom_canvas = tk.Canvas(self.zoom_window, width=100, height=100, highlightthickness=1, bg="black")
+            # Aqui definimos um tamanho inicial maior, pois tudo foi dobrado:
+            self.zoom_canvas = tk.Canvas(
+                self.zoom_window,
+                width=200,
+                height=200,
+                highlightthickness=1,
+                bg="black",
+            )
             self.zoom_canvas.pack()
 
-    def update_zoom_view(self, image, x, y, scale, mouse_x_root=None, mouse_y_root=None, point_radius=3):
+    def update_zoom_view(
+        self, image, x, y, scale, mouse_x_root=None, mouse_y_root=None, point_radius=3
+    ):
         """
-        Displays a cropped region of 'image' around (x, y) with zoom_factor.
-        The balloon will be positioned near the mouse pointer if mouse coords are provided.
+        Atualiza e exibe o recorte ampliado da imagem em torno de (x, y).
+        O parâmetro (x, y) está em coordenadas da imagem (não do canvas).
+        'mouse_x_root' e 'mouse_y_root' são as coordenadas do mouse em tela,
+        usadas para posicionar a janela do balloon.
         """
         if not image:
             return
+
+        # Garante que a janela de zoom exista:
         self._create_window()
 
-        half = self.zoom_size / 2.0
-        left = int(x - half)
-        top = int(y - half)
-        right = int(x + half)
-        bottom = int(y + half)
-        if left < 0:
-            left = 0
-        if top < 0:
-            top = 0
-        if right > image.width:
-            right = image.width
-        if bottom > image.height:
-            bottom = image.height
+        # Tamanho (em pixels da imagem) que queremos recortar ao redor do ponto:
+        balloon_size = self.zoom_size
+        half = balloon_size / 2.0
 
-        region = image.crop((left, top, right, bottom))
+        # Coordenadas "ideais" do recorte na imagem, sem clamping:
+        balloon_x1 = x - half
+        balloon_y1 = y - half
+        balloon_x2 = balloon_x1 + balloon_size
+        balloon_y2 = balloon_y1 + balloon_size
 
-        # Draw the dragged point inside the region
-        from PIL import ImageDraw
+        # Calcula a região que efetivamente cai dentro da imagem:
+        overlap_x1 = max(0, balloon_x1)
+        overlap_y1 = max(0, balloon_y1)
+        overlap_x2 = min(image.width, balloon_x2)
+        overlap_y2 = min(image.height, balloon_y2)
 
-        draw = ImageDraw.Draw(region)
-        px = x - left
-        py = y - top
+        # Cria uma base toda em preto, do tamanho exato de balloon_size:
+        base = Image.new("RGB", (balloon_size, balloon_size), color=(0, 0, 0))
+
+        # Recorta apenas a parte que existe dentro da imagem:
+        if overlap_x2 > overlap_x1 and overlap_y2 > overlap_y1:
+            region = image.crop((overlap_x1, overlap_y1, overlap_x2, overlap_y2))
+        else:
+            # Se não há interseção, retorna rapidamente (estamos fora da imagem).
+            region = None
+
+        # Calcula onde a região recortada deve ser "colada" dentro de 'base':
+        paste_x = overlap_x1 - balloon_x1
+        paste_y = overlap_y1 - balloon_y1
+
+        if region:
+            base.paste(region, (int(paste_x), int(paste_y)))
+
+        # Desenha o ponto amarelo na base (o ponto está em coords do balloon):
+        px = x - balloon_x1
+        py = y - balloon_y1
+        draw = ImageDraw.Draw(base)
         r = point_radius
         draw.ellipse((px - r, py - r, px + r, py + r), fill="yellow", outline="yellow")
 
-        # Resize for zoom
-        new_w = int(region.width * self.zoom_factor)
-        new_h = int(region.height * self.zoom_factor)
-        if new_w < 1:
-            new_w = 1
-        if new_h < 1:
-            new_h = 1
-        region = region.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        # Aplica o fator de zoom final:
+        final_w = int(balloon_size * self.zoom_factor)
+        final_h = int(balloon_size * self.zoom_factor)
+        if final_w < 1:
+            final_w = 1
+        if final_h < 1:
+            final_h = 1
+        zoomed = base.resize((final_w, final_h), Image.Resampling.NEAREST)
 
-        import tkinter as tk
-        from PIL import ImageTk
-
-        photo = ImageTk.PhotoImage(region)
+        # Atualiza o canvas com a imagem final ampliada:
+        photo = ImageTk.PhotoImage(zoomed)
         self.zoom_canvas.delete("all")
+        # Ajusta dinamicamente o tamanho do canvas à imagem resultante
+        self.zoom_canvas.config(width=final_w, height=final_h)
         self.zoom_canvas.create_image(0, 0, anchor=tk.NW, image=photo)
         self.zoom_canvas.image = photo
 
-        # Position the balloon near the mouse pointer if we have root coords
+        # Posiciona o balloon perto do cursor:
         offset_x = 20
         offset_y = -100
         if mouse_x_root is not None and mouse_y_root is not None:
-            # Just add some offset from the pointer
             pos_x = mouse_x_root + offset_x
             pos_y = mouse_y_root + offset_y
             self.zoom_window.geometry(f"+{pos_x}+{pos_y}")
         else:
-            # Fallback to original logic
+            # Fallback: posiciona relativo ao canvas e ao ponto.
             root_x = self.parent_canvas.winfo_rootx()
             root_y = self.parent_canvas.winfo_rooty()
-            self.zoom_window.geometry(f"+{root_x + int((x*scale)+20)}+{root_y + int((y*scale)-100)}")
+            self.zoom_window.geometry(
+                f"+{root_x + int((x*scale)+20)}" f"+{root_y + int((y*scale)-100)}"
+            )
 
     def hide_zoom_view(self):
-        """
-        Hides the balloon zoom window.
-        """
+        """Esconde a janela (balloon) de zoom."""
         if self.zoom_window:
             self.zoom_window.destroy()
             self.zoom_window = None
